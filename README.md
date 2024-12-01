@@ -52,7 +52,7 @@ MKB2Controller allows the user to control a virtual controller with mouse and ke
 1. Download and install ViGEmBus [Windows 10/11](https://github.com/nefarius/ViGEmBus/releases/tag/v1.22.0) | [Windows 7/8.1](https://github.com/nefarius/ViGEmBus/releases/tag/setup-v1.16.116)<sup>1 2</sup>
 1. Download and run the latest release of [MKB2Controller](https://github.com/N3R4i/MKB2Controller/releases/latest)
 2. Double click on the **MKB2Controller tray icon**
-3. Refer to the [Settings Overview](https://github.com/N3R4i/MKB2Controller?tab=readme-ov-file#settings-overview) if an option is not clear
+3. Refer to the [Settings Overview](https://github.com/N3R4i/MKB2Controller#settings-overview) if an option is not clear
 4. Run the game and press your toggle key (default is **F1**)
 
 _<sup>1 </sup>For Windows 7 you may also need this: [Xbox 360 Controller for Windows driver](https://web.archive.org/web/20160425082525/https://www.microsoft.com/hardware/en-us/d/xbox-360-controller-for-windows)_<br>
