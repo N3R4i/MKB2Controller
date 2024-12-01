@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "v1.0.0"
+version := "1.0.0"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -186,9 +186,9 @@ aboutMenu:
 Return
 
 helpMenu:
-	Msgbox,% 4 + 32 ,, If you need help with MKB2Controller, seek me out on GitHub.`n`nOpen link in browser?`nhttps://github.com/N3R4i
+	Msgbox,% 4 + 32 ,, If you need help with MKB2Controller, seek me out on GitHub.`n`nOpen link in browser?`nhttps://github.com/N3R4i/MKB2Controller
 	IfMsgBox Yes
-		Run, https://github.com/N3R4i
+		Run, https://github.com/N3R4i/MKB2Controller
 Return
 
 initViGEmInterface:
