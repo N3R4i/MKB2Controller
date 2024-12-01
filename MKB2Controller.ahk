@@ -1,13 +1,14 @@
-﻿;	Created by N3R4i
-;	Last modified: 2024-11-30
+;	Created by N3R4i
+;	Modified: 2024-12-01
 ;
 ;	Description:
-;	This is an AutoHotkey script that sends mouse and keyboard input to a virtual controller. Supports both XInput and DirectInput. Requires ViGEmBus for the virtual controller.
+;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
+;		Main usage is for emulators and games that don't have mouse&keyboard support. Supports both XInput and DirectInput. Requires ViGEmBus for the virtual controller.
 ;
 ;	Based on Helgef's and CemuUser8's mouse2joystick (https://github.com/CemuUser8/mouse2joystick_custom_CEMU)
 ;
 ;	Acknowledgements:
-;			Helgef - Original creator of mouse2joystic
+;			Helgef - Original mouse2joystic
 ;			CemuUser8 - mouse2joystick Custom CEMU version https://github.com/CemuUser8/mouse2joystick_custom_CEMU
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
@@ -62,10 +63,11 @@ upKey=w
 leftKey=a
 downKey=s
 rightKey=d
-walkToggleKey=CapsLock
+walkModifierKey=LAlt
+walkToggleMode=0
 increaseWalkKey=NumpadAdd
 decreaseWalkKey=NumpadSub
-walkSpeed=0.5
+walkSpeed=0.50
 invertedLX=0
 invertedLY=0
 MovementStick=0
@@ -91,12 +93,10 @@ joystickButtonKeyListBB=,,,,,,
 ; Read settings.
 IniRead,allSections,settings.ini
 IF (!allSections || allSections="ERROR") { ; Do not think this is ever set to ERROR.
-	MsgBox, % 2+16, Error reading file, There was an error reading the settings.ini file`, press retry to try again`, continue to set all settings to default or cancel to exit application.
-	IfMsgBox retry
-		reload
-	Else IfMsgBox Ignore
-		Goto, setSettingsToDefault	; Currently at bottom of script
-	Else 
+	MsgBox, % 1+16, Error reading settings file, There was an error reading the settings.ini`nPress OK to reset settings to default.
+	IfMsgBox Ok
+		Gosub IniWriteDefault
+	Else
 		ExitApp
 }
 Loop,Parse,allSections,`n
@@ -117,7 +117,6 @@ moveStickHalf := False
 KeyList := []
 KeyListByNum := []
 KeyListByNumBB := []	;Bloodborne key list
-Global KeyType:=["Buttons.A","Buttons.B","Buttons.X","Buttons.Y","Buttons.LB","Buttons.RB","Axes.LT","Axes.RT","Buttons.Back","Buttons.Start","Buttons.LS","Buttons.RS","Dpad","Dpad","Dpad","Dpad"]
 Global controller := []	;controller[1]=vXBox | controller[2]=vDS4
 
 ih := InputHook()
@@ -153,7 +152,7 @@ IF (!A_IsCompiled) { ; If it is compiled it should just use the EXE Icon
 ;Menu,Settings,openSettings
 Menu,Tray,Add,Settings,openSettings
 Menu,Tray,Add,
-Menu,Tray,Add,Reset to default, selectGameMenu
+Menu,Tray,Add,Reset to default, IniWriteDefault
 Menu,Tray,Add
 Menu,Tray,Add,About,aboutMenu
 Menu,Tray,Add,Help,helpMenu
@@ -177,14 +176,6 @@ IF (firstRun)
 
 Return
 ; End autoexec.
-
-selectGameMenu:
-	Global defaultSettings
-	TrayTip, % "Settings reset to default", % "",,0x10
-	FileDelete, settings.ini
-	sleep 100
-	FileAppend,%defaultSettings%,settings.ini
-Return
 
 reloadMenu:
 	Reload
@@ -274,8 +265,8 @@ Return
 Mouse2ControllerHotkeys:
 	Hotkey, IF, (!toggle && Mouse2Controller)
 		SetStick(0,0)
-		IF (walkToggleKey)
-			HotKey,%walkToggleKey%,toggleHalf, On
+		IF (walkModifierKey)
+			HotKey,%walkModifierKey%,toggleHalf, On
 		IF (decreaseWalkKey)
 			HotKey,%decreaseWalkKey%,decreaseWalk, On
 		IF (increaseWalkKey)
@@ -600,11 +591,17 @@ Gavlan(keyNum) {	;Gavlan Wheel? Gavlan Deal
 }
 
 toggleHalf:	;allow toggle or hold
-	moveStickHalf := !moveStickHalf
-	KeepStickHowItWas()
-	Keywait % walkToggleKey
-	moveStickHalf := !moveStickHalf
-	KeepStickHowItWas()
+	Global walkToggleMode
+	If walkToggleMode {
+		moveStickHalf := !moveStickHalf
+		KeepStickHowItWas()
+	} Else {
+		moveStickHalf := 1
+		KeepStickHowItWas()
+		Keywait % walkModifierKey
+		moveStickHalf := 0
+		KeepStickHowItWas()
+	}
 Return
 
 decreaseWalk:
@@ -1015,9 +1012,9 @@ GUI, Tab, General
 	GUI, Add, Radio, %  "xp+10 yp+20 Group vopusevXBox Checked" . usevXBox, XInput (virtual XBox 360 controller)
 	GUI, Add, Radio, %  "xp yp+20 Checked" . !usevXBox, DirectInput (virtual DualShock 4 controller)
 
-	GUI, Add, GroupBox, x%SX% yp+35 w320 h50,Executable Name
-	GUI, Add, Edit, xp+10 yp+20 vopgameExe w90, %gameExe% 
-	GUI, Add, Text, x+m yp+3, The executable name (e.g. shadPS4.exe)
+	GUI, Add, GroupBox, x%SX% yp+35 w320 h50,Executable Name (e.g. game.exe)
+	GUI, Add, Edit, xp+10 yp+20 vopgameExe w170, %gameExe% 
+	;GUI, Add, Text, x+m yp+3, (e.g. game.exe)
 	
 	GUI, Add, GroupBox, x%SX% yp+37 w320 h45,Auto Switch
 	GUI, Add, Radio, % "xp+10 yp+20 Group vopautoActivateGame Checked" autoActivateGame, Yes
@@ -1075,20 +1072,21 @@ GUI, Tab, Keyboard-Movement
 	GUI, Add, Text, xs+10 yp+25 Right w80, Right:
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 voprightKey, %rightKey%
 	
-	GUI, Add, GroupBox, xs w320 h80, Walking
-	GUI, Add, Text, xs+10 yp+20 Right w80, Toggle Walk:
-	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopwalkToggleKey, %walkToggleKey%
-	GUI, Add, Text, x+2 yp+3 Right w20, + :
+	GUI, Add, GroupBox, xs w320 h80, Walk Modifier
+	;GUI, Add, Hotkey, xs+10 yp+20 w70 Limit190 vopwalkModifierKey, %walkModifierKey%
+	GUI, Add, Hotkey, xs+10 yp+20 w70 Center -TabStop gsetWalkModKey vopwalkModifierKey, %walkModifierKey%
+	Gui, Add, CheckBox, x+5 yp+4 vopwalkToggleMode, Toggle mode?
+	GUI, Add, Text, xp+90 yp-1 Right w15, + :
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopincreaseWalkKey, %increaseWalkKey%
-	GUI, Add, Text, x+2 yp+3 Right w20, - :
+	GUI, Add, Text, x+0 yp+3 Right w15, - :
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopdecreaseWalkKey, %decreaseWalkKey%
-	GUI, Add, Text, xs+10 yp+35 Right w80, Walking Speed:
-	GUI, Add, Slider, x+2 yp-8 w180 Range0-100 TickInterval10 Thick12 vopwalkSpeed gWalkSpeedChange AltSubmit, % walkSpeed*100
+	GUI, Add, Text, xs+10 yp+30 Right w80, Walking Speed:
+	GUI, Add, Slider, x+2 yp w180 Range0-100 TickInterval10 Thick12 vopwalkSpeed gWalkSpeedChange AltSubmit, % walkSpeed*100
 	GUI, Font, Bold 
 	GUI, Add, Text, x+1 yp+8 w40 vopwalkSpeedTxt, % Round(walkSpeed*100) "%"
 	GUI, Font
 
-	GUI, Add, GroupBox, xs yp+30 w320 h40 Section,Invert X-Axis
+	GUI, Add, GroupBox, xs yp+28 w320 h40 Section,Invert X-Axis
 	GUI, Add, Radio, % "xp+10 yp+20 Group vopinvertedLX Checked" . invertedLX, Yes
 	GUI, Add, Radio, % "x+m Checked" . !invertedLX, No
 	
@@ -1163,8 +1161,8 @@ mainSave:
 		
 	; Joystick buttons
 	Hotkey, If, (!toggle && Mouse2Controller)
-	IF (walkToggleKey)
-		HotKey,%walkToggleKey%,toggleHalf, Off
+	IF (walkModifierKey)
+		HotKey,%walkModifierKey%,toggleHalf, Off
 	IF (decreaseWalkKey)
 		HotKey,%decreaseWalkKey%,decreaseWalk, Off
 	IF (increaseWalkKey)
@@ -1233,6 +1231,71 @@ mainSave:
 		Hotkey,%exitKey%,exitFunc, on
 Return
 
+IniWriteDefault:
+defaultusevXBox=1
+defaultgameExe=
+defaultautoActivateGame=0
+defaultcontrollerSwitchKey=F1
+defaultexitKey=#q
+defaulthideCursor=1
+defaultr=80
+defaultinterval=1
+defaultminmove=0.37
+defaultacceleration=0
+defaultinvertedX=0
+defaultinvertedY=0
+defaultMouseStick=1
+defaultupKey=w
+defaultleftKey=a
+defaultdownKey=s
+defaultrightKey=d
+defaultwalkModifierKey=LAlt
+defaultwalkToggleMode=0
+defaultincreaseWalkKey=NumpadAdd
+defaultdecreaseWalkKey=NumpadSub
+defaultwalkSpeed=0.50
+defaultinvertedLX=0
+defaultinvertedLY=0
+defaultMovementStick=0
+defaultjoystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
+defaultjoystickButtonKeyListBB=,,,,,,
+	IniWrite, % defaultusevXBox, settings.ini, General, usevXBox
+	IniWrite, % defaultgameExe, settings.ini, General, gameExe
+	IniWrite, % defaultautoActivateGame, settings.ini, General, autoActivateGame
+	IniWrite, % defaultcontrollerSwitchKey, settings.ini, General, controllerSwitchKey
+	IniWrite, % defaultexitKey, settings.ini, General, exitKey
+	IniWrite, % defaulthideCursor, settings.ini, General, hideCursor
+	;Write Mouse
+	IniWrite, % defaultr, settings.ini, Mouse, r
+	IniWrite, % defaultinterval, settings.ini, Mouse, interval
+	IniWrite, % defaultminmove, settings.ini, Mouse, minmove
+	IniWrite, % defaultacceleration, settings.ini, Mouse, acceleration
+	IniWrite, % defaultinvertedX, settings.ini, Mouse, invertedX
+	IniWrite, % defaultinvertedY, settings.ini, Mouse, invertedY
+	IniWrite, % defaultMouseStick, settings.ini, Mouse, MouseStick
+	;Write Keyboard-Movement
+	IniWrite, % defaultupKey, settings.ini, Keyboard-Movement, upKey
+	IniWrite, % defaultleftKey, settings.ini, Keyboard-Movement, leftKey
+	IniWrite, % defaultdownKey, settings.ini, Keyboard-Movement, downKey
+	IniWrite, % defaultrightKey, settings.ini, Keyboard-Movement, rightKey
+	IniWrite, % defaultwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
+	IniWrite, % defaultwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
+	IniWrite, % defaultincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
+	IniWrite, % defaultdecreaseWalkKey, settings.ini, Keyboard-Movement, decreaseWalkKey
+	IniWrite, % defaultwalkSpeed, settings.ini, Keyboard-Movement, walkSpeed
+	IniWrite, % defaultinvertedLX, settings.ini, Keyboard-Movement, invertedLX
+	IniWrite, % defaultinvertedLY, settings.ini, Keyboard-Movement, invertedLY
+	IniWrite, % defaultMovementStick, settings.ini, Keyboard-Movement, MovementStick
+	;Write Keybinds
+	IniWrite, % defaultjoystickButtonKeyList, settings.ini, Keybinds, joystickButtonKeyList
+	;Bloodborne
+	IniWrite, % defaultjoystickButtonKeyListBB, settings.ini, Bloodborne, joystickButtonKeyListBB
+TrayTip, % "Settings reset to default", % "",,0x10
+reload
+Return
+
+
+
 SubmitAll:
 	;FileDelete, settings.ini ; Should I just delete the settings file before writing all settings to it? Guarantees a clean file, but doesn't allow for hidden options...
 	; Write General
@@ -1255,7 +1318,8 @@ SubmitAll:
 	IniWrite, % opleftKey, settings.ini, Keyboard-Movement, leftKey
 	IniWrite, % opdownKey, settings.ini, Keyboard-Movement, downKey
 	IniWrite, % oprightKey, settings.ini, Keyboard-Movement, rightKey
-	IniWrite, % opwalkToggleKey, settings.ini, Keyboard-Movement, walkToggleKey
+	IniWrite, % opwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
+	IniWrite, % opwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % opincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
 	IniWrite, % opdecreaseWalkKey, settings.ini, Keyboard-Movement, decreaseWalkKey
 	IniWrite, % Round(opwalkSpeed/100, 2), settings.ini, Keyboard-Movement, walkSpeed
@@ -1412,10 +1476,11 @@ upKey=w
 leftKey=a
 downKey=s
 rightKey=d
-walkToggleKey=CapsLock
+walkModifierKey=LAlt
+walkToggleMode=0
 increaseWalkKey=NumpadAdd
 decreaseWalkKey=NumpadSub
-walkSpeed=0.5
+walkSpeed=0.50
 invertedLX=0
 invertedLY=0
 MovementStick=0
@@ -1446,14 +1511,8 @@ Loop, Parse, getKeyList, `,
 		continue
 	KeyListByNumBB[A_Index] := keyName
 }
-IF (vXBox) {
-	textWidth := 85
-	numEdits := 7
-}
-Else {
-	textWidth := 50
-	numEdits := 18
-}
+textWidth := 85
+numEdits := 7
 setToggle := False
 GUI, Main:+Disabled
 GUI, KeyHelper:New, +HWNDKeyHelperHWND -MinimizeBox +OwnerMain
@@ -1488,6 +1547,10 @@ GUI, Add, Button, xs w80 gSaveButtonBB, Save
 GUI, Add, Button, x+m w80 gCancelButton, Cancel
 GUI, Add, Text, w0 yp+15 R1 Right, Dummy
 
+GUI, Font, italic
+GUI, Add, Text, xs+10 yp-170 R1 Left, Most of these only work correctly`n with the Jump on L3 mod
+GUI, Font
+
 GUI, Show,, KeyList Helper
 GuiControl, Focus, LoseFocus
 Return
@@ -1509,7 +1572,7 @@ Loop, Parse, getKeyList, `,
 	KeyListByNum[A_Index] := keyName
 }
 IF (vXBox) {
-	textWidth := 100
+	textWidth := 50
 	numEdits := 16
 }
 Else {
@@ -1642,6 +1705,11 @@ getControl:
 
 	clearFocus:
 	GuiControl, Focus, LoseFocus
+Return
+
+setWalkModKey:
+	MouseGetPos,,,,useControl,1
+	GetKey()
 Return
 
 AutoLoop:
