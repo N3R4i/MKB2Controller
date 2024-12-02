@@ -15,6 +15,11 @@ MKB2Controller allows the user to control a virtual controller with mouse and ke
  * Supports both XInput and DirectInput virtual controllers. High precision mouse to analogue stick conversion with scalable sensitivity, optional deadzone compensation, mouse acceleration. Mouse/movement keys can be assigned to either stick. Inverted axis option. Main keybinds can be saved into separate profiles. Walk modifier key (both hold and toggle modes).
  * **BloodBorne Bonus Buttons [B<sup>4</sup>]** - Extra hotkeys specifically for Bloodborne. These hotkeys require the [Jump on L3 mod](https://www.nexusmods.com/bloodborne/mods/156?tab=description) to function properly.
 
+## Known Issues
+* In shadPS4 Bloodborne, sometimes the camera starts stuttering periodically (roughly once every second).
+* Also in shadPS4 Bloodborne, there's a slight but constant camera stutter.
+* Workaround: this sounds very bizzare, but letting Yuzu run in the background eliminates both of these stutters ?WTF? Also, as a result, none of these issues happen in Yuzu.
+
 ## Settings Overview
 * **General**
   * Output Mode - Choose between XInput and DirectInput
