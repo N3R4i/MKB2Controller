@@ -1,4 +1,4 @@
-;	Created by N3R4i
+	;	Created by N3R4i
 ;	Modified: 2024-12-03
 ;
 ;	Description:
@@ -327,7 +327,6 @@ Moving() {	;check movement key state
 }
 
 actionBB1:	;Dodge+Backstep
-	controller[ControllerIndex].Axes.RX.SetState(100)
 	If (vSprinting=1)	{	;if ○ is held release it
 		controller[ControllerIndex].Buttons.B.SetState(false)
 		sleep 30
