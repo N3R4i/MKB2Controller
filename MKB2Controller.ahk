@@ -1,5 +1,5 @@
 ;	Created by N3R4i
-;	Modified: 2024-12-01
+;	Modified: 2024-12-03
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.0.0"
+version := "1.0.1"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
