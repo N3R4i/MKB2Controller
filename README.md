@@ -1,4 +1,4 @@
-Version 1.0.0
+Version 1.0.1
 
 **SETUP GUIDE AT THE BOTTOM**
 
