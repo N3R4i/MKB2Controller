@@ -339,8 +339,7 @@ actionBB1:	;Dodge+Backstep
 	If (vSprinting=1)	{	;keep sprinting
 		controller[ControllerIndex].Buttons.B.SetState(true)
 	}
-Keywait % KeyListByNumBB[1]
-	controller[ControllerIndex].Axes.RX.SetState(50)
+	Keywait % KeyListByNumBB[1]
 return
 
 actionBB2:	;Dodge
@@ -363,7 +362,7 @@ actionBB2:	;Dodge
 		setStickLeft("N/A",0)
 	}
 	If (vSprinting=1) {	;keep sprinting
-		controller[ControllerIndex].Buttons.B.SetState(false)
+		controller[ControllerIndex].Buttons.B.SetState(true)
 	}
 	Keywait % KeyListByNumBB[2]
 return
@@ -460,7 +459,7 @@ long:=100
 	sleep %short%
 	controller[ControllerIndex].Dpad.SetState("None")
 	sleep 400
-	controller[ControllerIndex].Buttons.SetState(True)	;X
+	controller[ControllerIndex].Buttons.A.SetState(True)	;X
 	sleep %short%
 	controller[ControllerIndex].Buttons.A.SetState(False)
 return
