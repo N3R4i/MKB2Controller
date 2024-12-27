@@ -16,9 +16,15 @@ MKB2Controller allows the user to control a virtual controller with mouse and ke
  * **BloodBorne Bonus Buttons [B<sup>4</sup>]** - Extra hotkeys specifically for Bloodborne. These hotkeys require the [Jump on L3 mod](https://www.nexusmods.com/bloodborne/mods/156?tab=description) to function properly.
 
 ## Known Issues
-* In shadPS4 Bloodborne, sometimes the camera starts stuttering periodically (roughly once every second).
-* Also in shadPS4 Bloodborne, there's a slight but constant camera stutter.
-* Workaround: this sounds very bizzare, but letting Yuzu run in the background eliminates both of these stutters ?WTF? Also, as a result, none of these issues happen in Yuzu.
+* ~~In shadPS4 Bloodborne, sometimes the camera starts stuttering periodically (roughly once every second).~~
+* ~~Also in shadPS4 Bloodborne, there's a slight but constant camera stutter.~~
+* ~~Workaround: this sounds very bizzare, but letting Yuzu run in the background eliminates both of these stutters ?WTF? Also, as a result, none of these issues happen in Yuzu.~~
+
+With the later version of shadPS4, these issues seem be to resolved.
+
+## Troubleshooting
+* Try running the .exe as admin
+* In case the ViGEmWrapper.dll is blocked, unblock it: right click on the .dll -> Properties -> General -> At the bottom of the tab Unblock (if you don't see this option, then the .dll is not blocked)
 
 ## Settings Overview
 * **General**
