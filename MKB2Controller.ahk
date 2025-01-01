@@ -1,5 +1,5 @@
-	;	Created by N3R4i
-;	Modified: 2024-12-03
+;	Created by N3R4i
+;	Modified: 2025-01-02
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.0.1"
+version := "1.1.0"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -63,6 +63,7 @@ upKey=w
 leftKey=a
 downKey=s
 rightKey=d
+movementSmoothing=0
 walkModifierKey=LAlt
 walkToggleMode=0
 increaseWalkKey=NumpadAdd
@@ -118,6 +119,10 @@ KeyList := []
 KeyListByNum := []
 KeyListByNumBB := []	;Bloodborne key list
 Global controller := []	;controller[1]=vXBox | controller[2]=vDS4
+yminus:=0
+yplus:=0
+xminus:=0
+xplus:=0
 
 ih := InputHook()
 ih.KeyOpt("{All}", "ES")
@@ -245,11 +250,14 @@ controllerSwitch:
 			show_Mouse(False)
 		
 		SetTimer,MouseToController,%interval%
+		If movementSmoothing
+			SetTimer,MovementTimer,1
 
 	}
 	Else {	; Shutting down controller
 		setStick(0,0)														; Stick in equilibrium.
 		SetTimer,MouseToController,Off
+		SetTimer,MovementTimer,Off
 		
 		IF (hideCursor)
 			show_Mouse()				; No need to show cursor if not hidden.
@@ -271,14 +279,14 @@ Mouse2ControllerHotkeys:
 			HotKey,%decreaseWalkKey%,decreaseWalk, On
 		IF (increaseWalkKey)
 			HotKey,%increaseWalkKey%,increaseWalk, On
-
+			
 		Hotkey,%upKey%, overwriteUp, on 
 		Hotkey,%upKey% Up, overwriteUpup, on
 		Hotkey,%leftKey%, overwriteLeft, on 
 		Hotkey,%leftKey% Up, overwriteLeftup, on
 		Hotkey,%downKey%, overwriteDown, on 
 		Hotkey,%downKey% Up, overwriteDownup, on
-		Hotkey,%rightKey%, overwriteRight, on 
+		Hotkey,%rightKey%, overwriteRight, on
 		Hotkey,%rightKey% Up, overwriteRightup, on
 
 	KeyListByNumBB := []	;Feed joystickButtonKeyListBB keys into KeyListByNumBB[#] and turn on hotkeys
@@ -367,6 +375,8 @@ actionBB2:	;Dodge
 return
 
 actionBB3:	;Backstep
+	If movementSmoothing
+		Critical On
 	If (vSprinting=1) {	;if ○ is held release it
 		controller[ControllerIndex].Buttons.B.SetState(false)
 		sleep 30
@@ -388,6 +398,8 @@ actionBB3:	;Backstep
 	If (vSprinting=1) {	;keep sprinting
 		controller[ControllerIndex].Buttons.B.SetState(true)
 	}
+	If movementSmoothing
+		Critical Off
 	Keywait % KeyListByNumBB[3]
 return
 
@@ -414,6 +426,8 @@ actionBB5:	;Jump
 return
 
 actionBB6:	;Jump attack
+	If movementSmoothing
+		Critical On
 	IF Moving() {
 		setStickLeft(0,0)
 		sleep 30
@@ -428,7 +442,9 @@ actionBB6:	;Jump attack
 	sleep 30
 	setStickLeft("N/A",0)
 	KeepStickHowItWas()
-	Keywait % (KeyListByNumBB[8])
+	If movementSmoothing
+		Critical Off
+	Keywait % (KeyListByNumBB[6])
 return
 
 actionBB7:	;Save&Quit
@@ -634,88 +650,167 @@ KeepStickHowItWas() {
 		setStickLeft("N/A",(moveStickHalf ? 1 * walkSpeed : 1))
 }
 
+MovementTimer:
+	If (GetKeyState(leftKey,"P")) {
+		If (yminus<0.99) {
+			yminus+=0.25
+		} Else {
+			yminus:=1
+		}
+	} Else {
+		If (yminus>0.01) {
+			yminus-=0.25
+		} Else {
+			yminus:=0
+		}
+	}
+	If (GetKeyState(rightKey,"P")) {
+		If (yplus<0.99) {
+			yplus+=0.25
+		} Else {
+			yplus:=1
+		}
+	} Else {
+		If (yplus>0.01) {
+			yplus-=0.25
+		} Else {
+			yplus:=0
+		}
+	}
+	If (GetKeyState(downKey,"P")) {
+		If (xminus<0.99) {
+			xminus+=0.25
+		} Else {
+			xminus:=1
+		}
+	} Else {
+		If (xminus>0.01) {
+			xminus-=0.25
+		} Else {
+			xminus:=0
+		}
+	}
+	If (GetKeyState(upKey,"P")) {
+		If (xplus<0.99) {
+			xplus+=0.25
+		} Else {
+			xplus:=1
+		}
+	} Else {
+		If (xplus>0.01) {
+			xplus-=0.25
+		} Else {
+			xplus:=0
+		}
+	}
+	If GetKeyState(leftKey,"P") or GetKeyState(rightKey,"P") or GetKeyState(downKey,"P") or GetKeyState(upKey,"P") {
+		IF (moveStickHalf)
+			setStickLeft((-1*yminus+yplus) * walkSpeed,(-1*xminus+xplus) * walkSpeed)
+		Else
+			setStickLeft(-1*yminus+yplus,-1*xminus+xplus)
+	} Else {
+		setStickLeft(0,0)
+	}
+Return
+
 overwriteUp:
-Critical, On
-IF (moveStickHalf)
-	setStickLeft("N/A",1 * walkSpeed)
-Else
-	setStickLeft("N/A",1)
-Critical, Off
-Return
-overwriteUpup:
-Critical, On
-IF (GetKeyState(downKey, "P")) {
-	IF (moveStickHalf)
-		setStickLeft("N/A",-1 * walkSpeed)
-	Else
-		setStickLeft("N/A",-1)
-}
-Else
-	setStickLeft("N/A",0)
-Critical, Off
-Return
-
-overwriteLeft:
-Critical, On
-IF (moveStickHalf)
-	setStickLeft(-1 * walkSpeed,"N/A")
-Else
-	setStickLeft(-1,"N/A")
-Critical, Off
-Return
-overwriteLeftup:
-Critical, On
-IF (GetKeyState(rightKey, "P")) {
-	IF (moveStickHalf)
-		setStickLeft(1 * walkSpeed,"N/A")
-	Else
-		setStickLeft(1,"N/A")
-}
-Else
-	setStickLeft(0,"N/A")
-Critical, Off
-Return
-
-overwriteRight:
-Critical, On
-IF (moveStickHalf)
-	setStickLeft(1 * walkSpeed,"N/A")
-Else
-	setStickLeft(1,"N/A")
-Critical, Off
-Return
-overwriteRightup:
-Critical, On
-IF (GetKeyState(leftKey, "P")) {
-	IF (moveStickHalf)
-		setStickLeft(-1 * walkSpeed,"N/A")
-	Else
-		setStickLeft(-1,"N/A")
-}
-Else
-	setStickLeft(0,"N/A")
-Critical, Off
-Return
-
-overwriteDown:
-Critical, On
-IF (moveStickHalf)
-	setStickLeft("N/A",-1 * walkSpeed)
-Else
-	setStickLeft("N/A",-1)
-Critical, Off
-Return
-overwriteDownup:
-Critical, On
-IF (GetKeyState(upKey, "P")) {
+Critical On
+If !movementSmoothing {
 	IF (moveStickHalf)
 		setStickLeft("N/A",1 * walkSpeed)
 	Else
 		setStickLeft("N/A",1)
 }
-Else
-	setStickLeft("N/A",0)
-Critical, Off
+Critical Off
+Return
+overwriteUpup:
+Critical On
+If !movementSmoothing {
+	IF (GetKeyState(downKey, "P")) {
+		IF (moveStickHalf)
+			setStickLeft("N/A",-1 * walkSpeed)
+		Else
+			setStickLeft("N/A",-1)
+	}
+	Else
+		setStickLeft("N/A",0)
+}
+Critical Off
+Return
+
+overwriteLeft:
+Critical On
+If !movementSmoothing {
+	IF (moveStickHalf)
+		setStickLeft(-1 * walkSpeed,"N/A")
+	Else
+		setStickLeft(-1,"N/A")
+}
+Critical Off
+Return
+overwriteLeftup:
+Critical On
+If !movementSmoothing {
+	IF (GetKeyState(rightKey, "P")) {
+		IF (moveStickHalf)
+			setStickLeft(1 * walkSpeed,"N/A")
+		Else
+			setStickLeft(1,"N/A")
+	}
+	Else
+		setStickLeft(0,"N/A")
+}
+Critical Off
+Return
+
+overwriteRight:
+Critical On
+If !movementSmoothing {
+	IF (moveStickHalf)
+		setStickLeft(1 * walkSpeed,"N/A")
+	Else
+		setStickLeft(1,"N/A")
+}
+Critical Off
+Return
+overwriteRightup:
+Critical On
+If !movementSmoothing {
+	IF (GetKeyState(leftKey, "P")) {
+		IF (moveStickHalf)
+			setStickLeft(-1 * walkSpeed,"N/A")
+		Else
+			setStickLeft(-1,"N/A")
+	}
+	Else
+		setStickLeft(0,"N/A")
+}
+Critical Off
+Return
+
+overwriteDown:
+Critical On
+If !movementSmoothing {
+	IF (moveStickHalf)
+		setStickLeft("N/A",-1 * walkSpeed)
+	Else
+		setStickLeft("N/A",-1)
+}
+Critical Off
+Return
+overwriteDownup:
+Critical On
+If !movementSmoothing {
+	IF (GetKeyState(upKey, "P")) {
+		IF (moveStickHalf)
+			setStickLeft("N/A",1 * walkSpeed)
+		Else
+			setStickLeft("N/A",1)
+	}
+	Else
+		setStickLeft("N/A",0)
+}
+Critical Off
 Return
 
 ; Labels
@@ -1060,20 +1155,21 @@ GUI, Tab, Mouse
 	GUI, Add, Radio, %  "x+m Checked" . MouseStick, Right Stick
 ;------------------------------------------------------------------------------------------------------------------------------------------
 GUI, Tab, Keyboard-Movement
-	GUI, Add, GroupBox, x%SX% y%SY% w160 h120 Section, Keyboard Movement
-	GUI, Add, Text, xs+10 yp+25 Right w80, Up:
+	GUI, Add, GroupBox, x%SX% y%SY% w250 h120 Section, Keyboard Movement
+	GUI, Add, Text, xs+10 yp+25 Right w35, Up:
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopupKey, %upKey%
-	GUI, Add, Text, xs+10 yp+25 Right w80, Left:
+	GUI, Add, Text, xs+10 yp+25 Right w35, Left:
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopleftKey, %leftKey%
-	GUI, Add, Text, xs+10 yp+25 Right w80, Down:
+	GUI, Add, Text, xs+10 yp+25 Right w35, Down:
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopdownKey, %downKey%
-	GUI, Add, Text, xs+10 yp+25 Right w80, Right:
+	GUI, Add, Text, xs+10 yp+25 Right w35, Right:
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 voprightKey, %rightKey%
 	
+	Gui, Add, CheckBox, % "xs+110 ys+22 vopmovementSmoothing Checked" . movementSmoothing, Movement Smoothing
+	
 	GUI, Add, GroupBox, xs w320 h80, Walk Modifier
-	;GUI, Add, Hotkey, xs+10 yp+20 w70 Limit190 vopwalkModifierKey, %walkModifierKey%
 	GUI, Add, Hotkey, xs+10 yp+20 w70 Center -TabStop gsetWalkModKey vopwalkModifierKey, %walkModifierKey%
-	Gui, Add, CheckBox, x+5 yp+4 vopwalkToggleMode, Toggle mode?
+	Gui, Add, CheckBox, % "x+5 yp+4 vopwalkToggleMode Checked" . walkToggleMode, Toggle mode
 	GUI, Add, Text, xp+90 yp-1 Right w15, + :
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopincreaseWalkKey, %increaseWalkKey%
 	GUI, Add, Text, x+0 yp+3 Right w15, - :
@@ -1247,6 +1343,7 @@ defaultupKey=w
 defaultleftKey=a
 defaultdownKey=s
 defaultrightKey=d
+defaultmovementSmoothing=0
 defaultwalkModifierKey=LAlt
 defaultwalkToggleMode=0
 defaultincreaseWalkKey=NumpadAdd
@@ -1276,6 +1373,7 @@ defaultjoystickButtonKeyListBB=,,,,,,
 	IniWrite, % defaultleftKey, settings.ini, Keyboard-Movement, leftKey
 	IniWrite, % defaultdownKey, settings.ini, Keyboard-Movement, downKey
 	IniWrite, % defaultrightKey, settings.ini, Keyboard-Movement, rightKey
+	IniWrite, % defaultmovementSmoothing, settings.ini, Keyboard-Movement, movementSmoothing
 	IniWrite, % defaultwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
 	IniWrite, % defaultwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % defaultincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
@@ -1316,6 +1414,7 @@ SubmitAll:
 	IniWrite, % opleftKey, settings.ini, Keyboard-Movement, leftKey
 	IniWrite, % opdownKey, settings.ini, Keyboard-Movement, downKey
 	IniWrite, % oprightKey, settings.ini, Keyboard-Movement, rightKey
+	IniWrite, % opmovementSmoothing, settings.ini, Keyboard-Movement, movementSmoothing
 	IniWrite, % opwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
 	IniWrite, % opwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % opincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
@@ -1474,6 +1573,7 @@ upKey=w
 leftKey=a
 downKey=s
 rightKey=d
+movementSmoothing=0
 walkModifierKey=LAlt
 walkToggleMode=0
 increaseWalkKey=NumpadAdd
@@ -1613,10 +1713,10 @@ GUI, Add, Button, xp+85 yp-1 w19 gClearOne v9, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "Start" : "Option"
 GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[10]
 GUI, Add, Button, xp+85 yp-1 w19 gClearOne v10, X
-GUI, Add, Text, w45 xp+20 ys R1 Right Section, L-Click
+GUI, Add, Text, w45 xp+20 ys R1 Right Section, % vXBox ? "LS" : "L3"
 GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[11]
 GUI, Add, Button, xp+85 yp-1 w19 gClearOne v11, X
-GUI, Add, Text, w45 xp+20 ys R1 Right Section, R-Click
+GUI, Add, Text, w45 xp+20 ys R1 Right Section, % vXBox ? "RS" : "R3"
 GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[12]
 GUI, Add, Button, xp+85 yp-1 w19 gClearOne v12, X
 GUI, Add, Text, w45 xp+20 ys R1 Right Section, D-Up
