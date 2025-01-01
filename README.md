@@ -43,7 +43,7 @@ With the later version of shadPS4, these issues seem be to resolved.
   * Mouse to stick L/R - Choose which stick to control with the mouse
 * **Keyboard-Movement**
   * Keyboard Movement - self explanatory
-  * Movement Smoothing - Adds transition when changing movement direction. Makes character turning smoother, usefull when trying to run in circles.
+  * Movement Smoothing - Adds transition when changing movement direction. Makes the character turning smoother, useful when trying to run in circles.
   * Walk Modifier - Set up keys for walking and increasing/decreasing walking speed. Check toggle if you want toggle mode instead of hold mode.
   * Invert X/Y-Axis - self explanatory
   * Movement to stick L/R - Choose which stick to control with the movement keys
