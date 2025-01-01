@@ -1,4 +1,4 @@
-Version 1.0.1
+Version 1.1.0
 
 **SETUP GUIDE AT THE BOTTOM**
 
@@ -12,7 +12,7 @@ Acknowledgements
 MKB2Controller allows the user to control a virtual controller with mouse and keyboard. Main purpose is for emulators and games that don't have mouse and keyboard support. Requires ViGEmBus to emulate the virtual controller. Based on Helgef's and CemuUser8's mouse2joystick.
 
 ## Main features
- * Supports both XInput and DirectInput virtual controllers. High precision mouse to analogue stick conversion with scalable sensitivity, optional deadzone compensation, mouse acceleration. Mouse/movement keys can be assigned to either stick. Inverted axis option. Main keybinds can be saved into separate profiles. Walk modifier key (both hold and toggle modes).
+ * Supports both XInput and DirectInput virtual controllers. High precision mouse to analogue stick conversion with scalable sensitivity, optional deadzone compensation, mouse acceleration. Mouse/movement keys can be assigned to either stick. Option for movement smoothing. Inverted axis option. Main keybinds can be saved into separate profiles. Walk modifier key (both hold and toggle modes).
  * **BloodBorne Bonus Buttons [B<sup>4</sup>]** - Extra hotkeys specifically for Bloodborne. These hotkeys require the [Jump on L3 mod](https://www.nexusmods.com/bloodborne/mods/156?tab=description) to function properly.
 
 ## Known Issues
@@ -43,6 +43,7 @@ With the later version of shadPS4, these issues seem be to resolved.
   * Mouse to stick L/R - Choose which stick to control with the mouse
 * **Keyboard-Movement**
   * Keyboard Movement - self explanatory
+  * Movement Smoothing - Adds transition when changing movement direction. Makes character turning smoother, usefull when trying to run in circles.
   * Walk Modifier - Set up keys for walking and increasing/decreasing walking speed. Check toggle if you want toggle mode instead of hold mode.
   * Invert X/Y-Axis - self explanatory
   * Movement to stick L/R - Choose which stick to control with the movement keys
