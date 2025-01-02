@@ -704,12 +704,14 @@ MovementTimer:
 		}
 	}
 	If GetKeyState(leftKey,"P") or GetKeyState(rightKey,"P") or GetKeyState(downKey,"P") or GetKeyState(upKey,"P") {
+		AlreadyAtZero:=0
 		IF (moveStickHalf)
 			setStickLeft((-1*yminus+yplus) * walkSpeed,(-1*xminus+xplus) * walkSpeed)
 		Else
 			setStickLeft(-1*yminus+yplus,-1*xminus+xplus)
-	} Else {
+	} Else If !AlreadyAtZero {
 		setStickLeft(0,0)
+		AlreadyAtZero:=1
 	}
 Return
 
