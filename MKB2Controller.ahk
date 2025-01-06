@@ -1,5 +1,5 @@
 ;	Created by N3R4i
-;	Modified: 2025-01-02
+;	Modified: 2025-01-06
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.1.0"
+version := "1.2.0"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -63,7 +63,8 @@ upKey=w
 leftKey=a
 downKey=s
 rightKey=d
-movementSmoothing=0
+movementSmoothing=1
+movementIncrement=0.9
 walkModifierKey=LAlt
 walkToggleMode=0
 increaseWalkKey=NumpadAdd
@@ -124,8 +125,8 @@ yplus:=0
 xminus:=0
 xplus:=0
 
-ih := InputHook()
-ih.KeyOpt("{All}", "ES")
+ihSimple := InputHook()	;for non-main keybinds
+ihSimple.KeyOpt("{All}", "ES")
 
 ; Hotkey(s).
 IF (controllerSwitchKey)
@@ -248,9 +249,9 @@ controllerSwitch:
 		
 		IF (hideCursor)
 			show_Mouse(False)
-		
-		SetTimer,MouseToController,%interval%
-		If movementSmoothing
+		If MouseStick!=2
+			SetTimer,MouseToController,%interval%
+		If movementSmoothing:=1	;always use this method for movement
 			SetTimer,MovementTimer,1
 
 	}
@@ -273,13 +274,18 @@ Return
 Mouse2ControllerHotkeys:
 	Hotkey, IF, (!toggle && Mouse2Controller)
 		SetStick(0,0)
+		
+		Hotkey,LCtrl, maskLCtrl, on	;needed so input focus is not lost when modifier+singlekey combinations are used
+		Hotkey,LAlt, maskLAlt, on
+		Hotkey,LShift, maskLShift, on
+		
 		IF (walkModifierKey)
 			HotKey,%walkModifierKey%,toggleHalf, On
 		IF (decreaseWalkKey)
 			HotKey,%decreaseWalkKey%,decreaseWalk, On
 		IF (increaseWalkKey)
 			HotKey,%increaseWalkKey%,increaseWalk, On
-			
+		
 		Hotkey,%upKey%, overwriteUp, on 
 		Hotkey,%upKey% Up, overwriteUpup, on
 		Hotkey,%leftKey%, overwriteLeft, on 
@@ -296,6 +302,7 @@ Mouse2ControllerHotkeys:
 			continue
 		KeyListByNumBB[A_Index] := A_LoopField
 		Hotkey, % (KeyListByNumBB[A_Index]), actionBB%A_Index%, on
+		Hotkey, % (KeyListByNumBB[A_Index]) " Up", actionBB%A_Index%Up, on	;this is a better way to prevent the hotkey getting spammed
 	}
 	
 	KeyListByNum := []	;joystickButtonKeyList keys have to be fed into KeyListByNum[#] here
@@ -306,23 +313,96 @@ Mouse2ControllerHotkeys:
 		continue
 	KeyListByNum[A_Index] := keyName
 	}
-
+	Global overrideButton, currentButton
+	overrideButton := []
 	KeyList := []
 	Loop, Parse, joystickButtonKeyList, `,
 	{
 		useButton := A_Index
 		Loop, Parse, A_LoopField, |
 		{	
-			keyName=*%A_LoopField%	;added * so hotkeys work even when modifiers are held
+			keyName=%A_LoopField%	;added * is not necessary
 			
 			IF (!keyName)
 				Continue
-			KeyList[keyName] := useButton
+			; keyName:=detectModifiers(keyName)
+			detectModifiers(keyName, useButton)
+			If currentButton
+				KeyList[keyName] := useButton
 			Hotkey,%keyName%, pressJoyButton, on
 			Hotkey,%keyName% Up, releaseJoyButton, on
 		}
 	}
 	Hotkey, IF
+Return
+
+detectModifiers(ByRef keyName, ByRef useButton) {
+	If InStr(keyName, "LCtrl+") and InStr(keyName, "LAlt+") and InStr(keyName, "LShift+") {
+		keyName:=RegexReplace(keyName,"LCtrl\+LAlt\+LShift\+")
+		overrideButton[keyName . 7]:=useButton
+		currentButton:=0
+	} Else If InStr(keyName, "LAlt+") and InStr(keyName, "LShift+") {
+		keyName:=RegexReplace(keyName,"LAlt\+LShift\+")
+		overrideButton[keyName . 6]:=useButton
+		currentButton:=0
+	} Else If InStr(keyName, "LCtrl+") and InStr(keyName, "LShift+") {
+		keyName:=RegexReplace(keyName,"LCtrl\+LShift\+")
+		overrideButton[keyName . 5]:=useButton
+		currentButton:=0
+	} Else If InStr(keyName, "LCtrl+") and InStr(keyName, "LAlt+") {
+		keyName:=RegexReplace(keyName,"LCtrl\+LAlt\+")
+		overrideButton[keyName . 4]:=useButton
+		currentButton:=0
+	} Else If InStr(keyName, "LShift+") {
+		keyName:=RegexReplace(keyName,"LShift\+")
+		overrideButton[keyName . 3]:=useButton
+		currentButton:=0
+	} Else If InStr(keyName, "LAlt+") {
+		keyName:=RegexReplace(keyName,"LAlt\+")
+		overrideButton[keyName . 2]:=useButton
+		currentButton:=0
+	} Else If InStr(keyName, "LCtrl+") {
+		keyName:=RegexReplace(keyName,"LCtrl\+")
+		overrideButton[keyName . 1]:=useButton
+		currentButton:=0
+	} Else {
+		overrideButton[keyName . 0]:=useButton
+		currentButton:=1
+	}
+}
+
+; movementDisable(Index) {
+	; Switch Index {
+		; Case 1:
+			; If GetKeyState("LCtrl","P")
+				; Return 1
+		; Case 2:
+			; If GetKeyState("LAlt","P")
+				; Return 1
+		; Case 3:
+			; If GetKeyState("LShift","P")
+				; Return 1
+		; Case 4:
+			; If GetKeyState("LCtrl","P") and GetKeyState("LAlt","P")
+				; Return 1
+		; Case 5:
+			; If GetKeyState("LCtrl","P") and GetKeyState("LShift","P")
+				; Return 1
+		; Case 6:
+			; If GetKeyState("LAlt","P") and GetKeyState("LShift","P")
+				; Return 1
+		; Case 7:
+			; If GetKeyState("LCtrl","P") and GetKeyState("LAlt","P") and GetKeyState("LShift","P")
+				; Return 1
+		; }
+	; Return 0
+; }
+
+maskLCtrl:
+Return
+maskLAlt:
+Return
+maskLShift:
 Return
 
 Moving() {	;check movement key state
@@ -335,6 +415,9 @@ Moving() {	;check movement key state
 }
 
 actionBB1:	;Dodge+Backstep
+If !alreadyactionBB1 {
+	If !InStr(KeyListByNumBB[1], "wheel")
+		alreadyactionBB1:=1
 	If (vSprinting=1)	{	;if ○ is held release it
 		controller[ControllerIndex].Buttons.B.SetState(false)
 		sleep 30
@@ -346,10 +429,16 @@ actionBB1:	;Dodge+Backstep
 	If (vSprinting=1)	{	;keep sprinting
 		controller[ControllerIndex].Buttons.B.SetState(true)
 	}
-	Keywait % KeyListByNumBB[1]
+}
 return
+actionBB1Up:
+	alreadyactionBB1:=0
+Return
 
 actionBB2:	;Dodge
+If !alreadyactionBB2 {
+	If !InStr(KeyListByNumBB[2], "wheel")
+		alreadyactionBB2:=1
 	If (vSprinting=1) {	;if ○ is held release it
 		controller[ControllerIndex].Buttons.B.SetState(false)
 		sleep 30
@@ -371,10 +460,16 @@ actionBB2:	;Dodge
 	If (vSprinting=1) {	;keep sprinting
 		controller[ControllerIndex].Buttons.B.SetState(true)
 	}
-	Keywait % KeyListByNumBB[2]
+}
 return
+actionBB2Up:
+	alreadyactionBB2:=0
+Return
 
 actionBB3:	;Backstep
+If !alreadyactionBB3 {
+	If !InStr(KeyListByNumBB[3], "wheel")
+		alreadyactionBB3:=1
 	If movementSmoothing
 		Critical On
 	If (vSprinting=1) {	;if ○ is held release it
@@ -400,8 +495,11 @@ actionBB3:	;Backstep
 	}
 	If movementSmoothing
 		Critical Off
-	Keywait % KeyListByNumBB[3]
+}
 return
+actionBB3Up:
+	alreadyactionBB3:=0
+Return
 
 actionBB4:	;Sprint
 	While GetKeyState(KeyListByNumBB[4], "P") {
@@ -409,7 +507,8 @@ actionBB4:	;Sprint
 			controller[ControllerIndex].Buttons.B.SetState(true)	;start sprinting
 			vSprinting:=1	;to know O button state
 			sleep 500	;don't release it too early to prevent rolling
-			Keywait % (KeyListByNumBB[4])
+			If !InStr(KeyListByNumBB[4], "wheel")
+				Keywait % (KeyListByNumBB[4])
 			controller[ControllerIndex].Buttons.B.SetState(false)
 			vSprinting:=0
 			Return
@@ -417,15 +516,26 @@ actionBB4:	;Sprint
 		sleep 100	;prevents hotkey spam
 	}
 return
+actionBB4Up:
+Return
 
 actionBB5:	;Jump
+If !alreadyactionBB5 {
+	If !InStr(KeyListByNumBB[5], "wheel")
+		alreadyactionBB5:=1
 	controller[ControllerIndex].Buttons.LS.SetState(true)
 	sleep 30
 	controller[ControllerIndex].Buttons.LS.SetState(false)
-	Keywait % KeyListByNumBB[5]
+}
 return
+actionBB5Up:
+	alreadyactionBB5:=0
+Return
 
 actionBB6:	;Jump attack
+If !alreadyactionBB6 {
+	If !InStr(KeyListByNumBB[6], "wheel")
+		alreadyactionBB6:=1
 	If movementSmoothing
 		Critical On
 	IF Moving() {
@@ -444,8 +554,11 @@ actionBB6:	;Jump attack
 	KeepStickHowItWas()
 	If movementSmoothing
 		Critical Off
-	Keywait % (KeyListByNumBB[6])
+}
 return
+actionBB6Up:
+	alreadyactionBB6:=0
+Return
 
 actionBB7:	;Save&Quit
 short:=30
@@ -478,11 +591,37 @@ long:=100
 	sleep %short%
 	controller[ControllerIndex].Buttons.A.SetState(False)
 return
+actionBB7Up:
+Return
 
 ; Labels for pressing and releasing joystick buttons.
 pressJoyButton:
 	keyName:=A_ThisHotkey
 	joyButtonNumber := KeyList[keyName] ; joyButtonNumber:=A_Index
+	
+	If GetKeyState("LCtrl","P") and GetKeyState("LAlt","P") and GetKeyState("LShift","P") {
+		If overrideButton[keyName . 7]
+			joyButtonNumber:=overrideButton[keyName . 7]
+	} Else If GetKeyState("LAlt","P") and GetKeyState("LShift","P") {
+		If overrideButton[keyName . 6]
+			joyButtonNumber:=overrideButton[keyName . 6]
+	} Else If GetKeyState("LCtrl","P") and GetKeyState("LShift","P") {
+		If overrideButton[keyName . 5]
+			joyButtonNumber:=overrideButton[keyName . 5]
+	} Else If GetKeyState("LCtrl","P") and GetKeyState("LAlt","P") {
+		If overrideButton[keyName . 4]
+			joyButtonNumber:=overrideButton[keyName . 4]
+	} Else If GetKeyState("LShift","P") {
+		If overrideButton[keyName . 3]
+			joyButtonNumber:=overrideButton[keyName . 3]
+	} Else If GetKeyState("LAlt","P") {
+		If overrideButton[keyName . 2]
+			joyButtonNumber:=overrideButton[keyName . 2]
+	} Else If GetKeyState("LCtrl","P") {
+		If overrideButton[keyName . 1]
+			joyButtonNumber:=overrideButton[keyName . 1]
+	}	
+	
 	If InStr(keyName, "wheel")
 		new SelfDeletingTimer(100, "Gavlan", joyButtonNumber)
 	Switch joyButtonNumber
@@ -526,6 +665,11 @@ Return
 releaseJoyButton:
 	keyName:=RegExReplace(A_ThisHotkey," Up$")
 	joyButtonNumber := KeyList[keyName] ; joyButtonNumber:=A_Index
+	
+Loop 8 {	;this ensures that buttons don't get stuck
+	If !overrideButton[keyName . A_Index-1]
+		Continue
+	joyButtonNumber:=overrideButton[keyName . A_Index-1]
 	Switch joyButtonNumber
 		{
 		Case 1:
@@ -562,6 +706,7 @@ releaseJoyButton:
 		Case 16:
 			controller[ControllerIndex].Dpad.SetState("None")
 		}
+}
 Return
 
 Gavlan(keyNum) {	;Gavlan Wheel? Gavlan Deal
@@ -623,7 +768,7 @@ decreaseWalk:
 	IF (walkSpeed < 0)
 		walkSpeed := 0
 	KeepStickHowItWas()
-	IniWrite, % walkSpeed:= Round(walkSpeed, 2), settings.ini, Keyboard Movement>Keys, walkSpeed
+	IniWrite, % walkSpeed:= Round(walkSpeed, 2), settings.ini, Keyboard-Movement, walkSpeed
 	GUI, Main:Default
 	GUIControl,,opwalkSpeedTxt, % Round(walkSpeed * 100) "%"
 Return
@@ -633,7 +778,7 @@ increaseWalk:
 	IF (walkSpeed > 1)
 		walkSpeed := 1
 	KeepStickHowItWas()
-	IniWrite, % walkSpeed := Round(walkSpeed, 2), settings.ini, Keyboard Movement>Keys, walkSpeed
+	IniWrite, % walkSpeed := Round(walkSpeed, 2), settings.ini, Keyboard-Movement, walkSpeed
 	GUI, Main:Default
 	GUIControl,,opwalkSpeedTxt, % Round(walkSpeed * 100) "%"
 Return
@@ -641,74 +786,65 @@ Return
 KeepStickHowItWas() {
 	Global moveStickHalf, walkSpeed, upKey, leftKey, downKey, rightKey
 	IF (GetKeyState(downKey, "P"))
-		setStickLeft("N/A",(moveStickHalf ? -1 * walkSpeed : -1))
+		setStickLeft("N/A",-1)
 	IF (GetKeyState(rightKey, "P"))
-		setStickLeft((moveStickHalf ? 1 * walkSpeed : 1),"N/A")
+		setStickLeft(1,"N/A")
 	IF (GetKeyState(leftKey, "P"))
-		setStickLeft((moveStickHalf ? -1 * walkSpeed : -1),"N/A")
+		setStickLeft(-1,"N/A")
 	IF (GetKeyState(upKey, "P"))
-		setStickLeft("N/A",(moveStickHalf ? 1 * walkSpeed : 1))
+		setStickLeft("N/A",1)
 }
 
 MovementTimer:
+; Loop 7 {
+	; If overrideButton[leftKey . A_Index] and movementDisable(A_Index)
+		; Return
+	; If overrideButton[rightKey . A_Index] and movementDisable(A_Index)
+		; Return
+	; If overrideButton[downKey . A_Index] and movementDisable(A_Index)
+		; Return
+	; If overrideButton[upKey . A_Index] and movementDisable(A_Index)
+		; Return
+; }
 	If (GetKeyState(leftKey,"P")) {
-		If (yminus<0.99) {
-			yminus+=0.25
-		} Else {
-			yminus:=1
-		}
+		xminus+=movementIncrement
+		If (xminus>1)
+			xminus:=1
 	} Else {
-		If (yminus>0.01) {
-			yminus-=0.25
-		} Else {
-			yminus:=0
-		}
+		xminus-=movementIncrement
+		If (xminus<0)
+			xminus:=0
 	}
 	If (GetKeyState(rightKey,"P")) {
-		If (yplus<0.99) {
-			yplus+=0.25
-		} Else {
-			yplus:=1
-		}
+		xplus+=movementIncrement
+		If (xplus>1)
+			xplus:=1
 	} Else {
-		If (yplus>0.01) {
-			yplus-=0.25
-		} Else {
-			yplus:=0
-		}
+		xplus-=movementIncrement
+		If (xplus<0)
+			xplus:=0
 	}
 	If (GetKeyState(downKey,"P")) {
-		If (xminus<0.99) {
-			xminus+=0.25
-		} Else {
-			xminus:=1
-		}
+		yminus+=movementIncrement
+		If (yminus>1)
+			yminus:=1
 	} Else {
-		If (xminus>0.01) {
-			xminus-=0.25
-		} Else {
-			xminus:=0
-		}
+		yminus-=movementIncrement
+		If (yminus<0)
+			yminus:=0
 	}
 	If (GetKeyState(upKey,"P")) {
-		If (xplus<0.99) {
-			xplus+=0.25
-		} Else {
-			xplus:=1
-		}
+		yplus+=movementIncrement
+		If (yplus>1)
+			yplus:=1
 	} Else {
-		If (xplus>0.01) {
-			xplus-=0.25
-		} Else {
-			xplus:=0
-		}
+		yplus-=movementIncrement
+		If (yplus<0)
+			yplus:=0
 	}
 	If GetKeyState(leftKey,"P") or GetKeyState(rightKey,"P") or GetKeyState(downKey,"P") or GetKeyState(upKey,"P") {
 		AlreadyAtZero:=0
-		IF (moveStickHalf)
-			setStickLeft((-1*yminus+yplus) * walkSpeed,(-1*xminus+xplus) * walkSpeed)
-		Else
-			setStickLeft(-1*yminus+yplus,-1*xminus+xplus)
+		setStickLeft(-1*xminus+xplus,-1*yminus+yplus)
 	} Else If !AlreadyAtZero {
 		setStickLeft(0,0)
 		AlreadyAtZero:=1
@@ -716,103 +852,87 @@ MovementTimer:
 Return
 
 overwriteUp:
-Critical On
 If !movementSmoothing {
-	IF (moveStickHalf)
-		setStickLeft("N/A",1 * walkSpeed)
-	Else
-		setStickLeft("N/A",1)
+	directionY:=1
+	If !alreadyUp {
+		setStickLeft(directionX,directionY)
+		alreadyUp:=1
+	}
 }
-Critical Off
 Return
 overwriteUpup:
-Critical On
 If !movementSmoothing {
 	IF (GetKeyState(downKey, "P")) {
-		IF (moveStickHalf)
-			setStickLeft("N/A",-1 * walkSpeed)
-		Else
-			setStickLeft("N/A",-1)
+		directionY:=-1
+	} Else {
+		directionY:=0
 	}
-	Else
-		setStickLeft("N/A",0)
+	setStickLeft(directionX,directionY)
+	alreadyUp:=0
 }
-Critical Off
 Return
 
 overwriteLeft:
-Critical On
 If !movementSmoothing {
-	IF (moveStickHalf)
-		setStickLeft(-1 * walkSpeed,"N/A")
-	Else
-		setStickLeft(-1,"N/A")
+	directionX:=-1
+	If !alreadyLeft {
+		setStickLeft(directionX,directionY)
+		alreadyLeft:=1
+	}
 }
-Critical Off
 Return
 overwriteLeftup:
-Critical On
 If !movementSmoothing {
 	IF (GetKeyState(rightKey, "P")) {
-		IF (moveStickHalf)
-			setStickLeft(1 * walkSpeed,"N/A")
-		Else
-			setStickLeft(1,"N/A")
+		directionX:=1
+	} Else {
+		directionX:=0
 	}
-	Else
-		setStickLeft(0,"N/A")
+	setStickLeft(directionX,directionY)
+	alreadyLeft:=0
 }
-Critical Off
 Return
 
 overwriteRight:
-Critical On
 If !movementSmoothing {
-	IF (moveStickHalf)
-		setStickLeft(1 * walkSpeed,"N/A")
-	Else
-		setStickLeft(1,"N/A")
+	directionX:=1
+	If !alreadyRight {
+		setStickLeft(directionX,directionY)
+		alreadyRight:=1
+	}
 }
-Critical Off
 Return
 overwriteRightup:
-Critical On
 If !movementSmoothing {
 	IF (GetKeyState(leftKey, "P")) {
-		IF (moveStickHalf)
-			setStickLeft(-1 * walkSpeed,"N/A")
-		Else
-			setStickLeft(-1,"N/A")
+		directionX:=-1
+	} Else {
+		directionX:=0
 	}
-	Else
-		setStickLeft(0,"N/A")
+	setStickLeft(directionX,directionY)
+	alreadyRight:=0
 }
-Critical Off
 Return
 
 overwriteDown:
-Critical On
 If !movementSmoothing {
-	IF (moveStickHalf)
-		setStickLeft("N/A",-1 * walkSpeed)
-	Else
-		setStickLeft("N/A",-1)
+	directionY:=-1
+	If !alreadyDown {
+		setStickLeft(directionX,directionY)
+		alreadyDown:=1
+	}
 }
-Critical Off
 Return
 overwriteDownup:
-Critical On
 If !movementSmoothing {
 	IF (GetKeyState(upKey, "P")) {
-		IF (moveStickHalf)
-			setStickLeft("N/A",1 * walkSpeed)
-		Else
-			setStickLeft("N/A",1)
+		directionY:=1
+	} Else {
+		directionY:=0
 	}
-	Else
-		setStickLeft("N/A",0)
+	setStickLeft(directionX,directionY)
+	alreadyDown:=0
 }
-Critical Off
 Return
 
 ; Labels
@@ -989,10 +1109,6 @@ setStick(x,y) {
 		o:=Abs(x)/magnitude		;calculate circle correction
 		p:=Abs(y)/magnitude
 	}
-	;IF (magnitude<>0 and magnitude<minmove) {	;alternative deadzone compensation, non-linear
-	;	x:=sign(x)*minmove
-	;	y:=sign(y)*minmove
-	;}
 	multx:=(Abs(x)+1)**acceleration	;mouse acceleration
 	multy:=(Abs(y)+1)**acceleration
 	x:=(sign(x)*minmove)+x*multx	;apply deadzone compensation with linear offset and mouse acceleration
@@ -1032,7 +1148,25 @@ setStickLeft(x,y) {	;easier to use a separate function for left stick, as a lot 
 	; Input is x,y ∈ (-1,1) where 1 would mean full tilt in one direction, and -1 in the other, while zero would mean no tilt at all. Using this interval makes it easy to invert the axis
 	; (mainly this was choosen beacause the author didn't know the correct interval to use in CvJoyInterface)
 	; the input is not really compatible with the CvJoyInterface. Hence this transformation:	
-	Global invLX, invLY
+	Global invLX, invLY, movementSmoothing, upKey, downKey, leftKey, rightKey, moveStickHalf, walkSpeed
+	
+	IF (moveStickHalf) {
+		x:=x*walkSpeed
+		y:=y*walkSpeed
+	}
+	
+	If movementSmoothing {
+		magnitude:=Sqrt(x**2+y**2)	;calculate magnitude
+		IF (magnitude<>0) {			;prevent division by 0
+			o:=Abs(x)/magnitude		;calculate circle correction
+			p:=Abs(y)/magnitude
+		}
+		IF (magnitude>0) { ;apply circle correction if magnitude has a value
+			x:=x*o	
+			y:=y*p
+		}
+	}
+	
 	x:=x*invLX
 	y:=y*invLY
 	
@@ -1155,6 +1289,7 @@ GUI, Tab, Mouse
 	GUI, Add, GroupBox, xs yp+30 w320 h45 Section, Mouse to stick:
 	GUI, Add, Radio, %  "xp+10 yp+20 Group vopMouseStick Checked" . !MouseStick, Left Stick
 	GUI, Add, Radio, %  "x+m Checked" . MouseStick, Right Stick
+	GUI, Add, Radio, %  "x+m Checked" . MouseStick-1, None
 ;------------------------------------------------------------------------------------------------------------------------------------------
 GUI, Tab, Keyboard-Movement
 	GUI, Add, GroupBox, x%SX% y%SY% w250 h120 Section, Keyboard Movement
@@ -1167,10 +1302,13 @@ GUI, Tab, Keyboard-Movement
 	GUI, Add, Text, xs+10 yp+25 Right w35, Right:
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 voprightKey, %rightKey%
 	
-	Gui, Add, CheckBox, % "xs+110 ys+22 vopmovementSmoothing Checked" . movementSmoothing, Movement Smoothing
-	
+	; Gui, Add, CheckBox, % "xs+110 ys+22 vopmovementSmoothing Checked" . movementSmoothing, Movement Smoothing
+	; GUI, Add, Text, xp yp+20, Smoothing Increment `nRecommended 0.25-0.9
+	GUI, Add, Text, xs+110 ys+22, Movement `nSmoothing Increment `nRecommended 0.25-0.9 `nSet to 1 to disable
+	GUI, Add, Edit, xp yp+55 w50 vopmovementIncrement gNumberCheck, %movementIncrement%
+
 	GUI, Add, GroupBox, xs w320 h80, Walk Modifier
-	GUI, Add, Hotkey, xs+10 yp+20 w70 Center -TabStop gsetWalkModKey vopwalkModifierKey, %walkModifierKey%
+	GUI, Add, Button, xs+10 yp+20 w70 Center -TabStop gsetWalkModKey vopwalkModifierKey, %walkModifierKey%	;better to have this as a button
 	Gui, Add, CheckBox, % "x+5 yp+4 vopwalkToggleMode Checked" . walkToggleMode, Toggle mode
 	GUI, Add, Text, xp+90 yp-1 Right w15, + :
 	GUI, Add, Hotkey, x+2 yp-3 w50 Limit190 vopincreaseWalkKey, %increaseWalkKey%
@@ -1221,14 +1359,6 @@ Return
 TreeClick:
 	IF (A_GUIEvent = "S") {
 		useSection := selectionPath(A_EventInfo)
-		IF (useSection = "Keyboard Movement") {
-			useSection := "Keyboard Movement>Keys"
-			TV_Modify(findByName(useSection), "Select")
-		}
-		Else IF (useSection = "Mouse2Controller") {
-			useSection := "Mouse2Controller>Keys"
-			TV_Modify(findByName(useSection), "Select")
-		}
 		SB_SetText(useSection)
 		GUIControl, Choose, TabControl, %useSection%
 	}
@@ -1247,6 +1377,11 @@ mainOk:
 	Gui, Main:Hide
 mainSave:
 	Gui, Main:Submit, NoHide
+	opmovementSmoothing:=1	;ensure that this is always 1
+	If opwalkModifierKey	;this is needed because this key assignment uses a button
+		walkModifierKey:=opwalkModifierKey
+	Else
+		opwalkModifierKey:=walkModifierKey
 	Gosub, SubmitAll
 	; Get old hotkeys.
 	; Disable old hotkeys
@@ -1264,6 +1399,10 @@ mainSave:
 	IF (increaseWalkKey)
 		HotKey,%increaseWalkKey%,increaseWalk, Off
 
+	Hotkey,LCtrl, maskLCtrl, off	;needed so input focus is not lost when modifier+singlekey combinations are used
+	Hotkey,LAlt, maskLAlt, off
+	Hotkey,LShift, maskLShift, off
+
 	Hotkey,%upKey%, overwriteUp, off
 	Hotkey,%upKey% Up, overwriteUpup, off
 	Hotkey,%leftKey%, overwriteLeft, off
@@ -1278,6 +1417,7 @@ mainSave:
 		If !A_LoopField
 			continue
 		Hotkey, % (KeyListByNumBB[A_Index]), actionBB%A_Index%, off
+		Hotkey, % (KeyListByNumBB[A_Index]) " Up", actionBB%A_Index%Up, off
 	}
 
 	Loop, Parse, joystickButtonKeyList, `,
@@ -1285,9 +1425,10 @@ mainSave:
 		useButton := A_Index
 		Loop, Parse, A_LoopField, |
 		{		
-			keyName=*%A_LoopField%
+			keyName=%A_LoopField%	;added * is not necessary
 			IF (!keyName)
 				Continue
+			detectModifiers(keyName, useButton)
 			KeyList[keyName] := useButton
 			Hotkey,%keyName%, pressJoyButton, off
 			Hotkey,%keyName% Up, releaseJoyButton, off
@@ -1345,7 +1486,8 @@ defaultupKey=w
 defaultleftKey=a
 defaultdownKey=s
 defaultrightKey=d
-defaultmovementSmoothing=0
+defaultmovementSmoothing=1
+defaultmovementIncrement=0.9
 defaultwalkModifierKey=LAlt
 defaultwalkToggleMode=0
 defaultincreaseWalkKey=NumpadAdd
@@ -1376,6 +1518,7 @@ defaultjoystickButtonKeyListBB=,,,,,,
 	IniWrite, % defaultdownKey, settings.ini, Keyboard-Movement, downKey
 	IniWrite, % defaultrightKey, settings.ini, Keyboard-Movement, rightKey
 	IniWrite, % defaultmovementSmoothing, settings.ini, Keyboard-Movement, movementSmoothing
+	IniWrite, % defaultmovementIncrement, settings.ini, Keyboard-Movement, movementIncrement
 	IniWrite, % defaultwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
 	IniWrite, % defaultwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % defaultincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
@@ -1416,7 +1559,12 @@ SubmitAll:
 	IniWrite, % opleftKey, settings.ini, Keyboard-Movement, leftKey
 	IniWrite, % opdownKey, settings.ini, Keyboard-Movement, downKey
 	IniWrite, % oprightKey, settings.ini, Keyboard-Movement, rightKey
+	If opmovementIncrement>1
+		opmovementIncrement:=1
+	If opmovementIncrement<0.1
+		opmovementIncrement:=0.1
 	IniWrite, % opmovementSmoothing, settings.ini, Keyboard-Movement, movementSmoothing
+	IniWrite, % opmovementIncrement, settings.ini, Keyboard-Movement, movementIncrement
 	IniWrite, % opwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
 	IniWrite, % opwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % opincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
@@ -1575,7 +1723,8 @@ upKey=w
 leftKey=a
 downKey=s
 rightKey=d
-movementSmoothing=0
+movementSmoothing=1
+movementIncrement=0.9
 walkModifierKey=LAlt
 walkToggleMode=0
 increaseWalkKey=NumpadAdd
@@ -1599,7 +1748,7 @@ Return
 #IF
 KeyListHelperBB:
 Hotkey, IF, KeyHelperRunning(setToggle)
-HotKey,~LButton, getControl, On
+HotKey,~LButton, getControlSimple, On
 Hotkey, IF
 GUI, Main:Default
 GUIControlGet, getKeyList,, opjoystickButtonKeyListBB
@@ -1642,14 +1791,12 @@ GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNumBB[7]
 GUI, Add, Button, xp+85 yp-1 w19 gClearOne v7, X
 GUI, Add, Text, w0 xs R1 Right, Dummy
 
-GUI, Add, Button, ys+122 w170 gClearButton Section, Clear All
+GUI, Add, Button, ys+122 w170 gClearButtonBB Section, Clear All
 GUI, Add, Button, xs w80 gSaveButtonBB, Save
 GUI, Add, Button, x+m w80 gCancelButton, Cancel
 GUI, Add, Text, w0 yp+15 R1 Right, Dummy
 
-GUI, Font, italic
-GUI, Add, Text, xs+10 yp-170 R1 Left, Most of these only work correctly`n with the Jump on L3 mod
-GUI, Font
+GUI, Add, Text, xs+10 yp-170 R1 Left, Most of these only work correctly`nwith the Jump on L3 mod`n`nKey combinations`nare not supported
 
 GUI, Show,, KeyList Helper
 GuiControl, Focus, LoseFocus
@@ -1664,13 +1811,6 @@ Hotkey, IF
 GUI, Main:Default
 GUIControlGet, getKeyList,, opjoystickButtonKeyList
 KeyListByNum := []
-Loop, Parse, getKeyList, `,
-{
-	keyName := A_LoopField
-	If !keyName
-		continue
-	KeyListByNum[A_Index] := keyName
-}
 IF (vXBox) {
 	textWidth := 50
 	numEdits := 16
@@ -1679,6 +1819,28 @@ Else {
 	textWidth := 50
 	numEdits := 16
 }
+Loop, Parse, getKeyList, `,
+{
+	useButton := A_Index
+	If InStr(A_LoopField, "|") {
+		Loop, Parse, A_LoopField, |
+		{	
+			keyName := A_LoopField
+			If !keyName
+				continue
+			KeyListByNum[useButton] := keyName
+			useButton+=numEdits
+		}
+	} Else {
+		keyName := A_LoopField
+		If !keyName
+			continue
+		KeyListByNum[useButton] := keyName
+	}
+}
+editWidth:=140
+editWidth2:=editWidth
+XWidth:=19
 setToggle := False
 GUI, Main:+Disabled
 GUI, KeyHelper:New, +HWNDKeyHelperHWND -MinimizeBox +OwnerMain
@@ -1686,66 +1848,105 @@ GUI, Margin, 10, 7.5
 GUI, Font,, Lucida Sans Typewriter ; Courier New
 GUI, Add, Text, W0 H0 vLoseFocus, Hidden
 GUI, Add, Text, W%textWidth% R1 Right Section, % vXBox ? "A" : "✕"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[1]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v1, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[1]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v1, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "B" : "○"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[2]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v2, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[2]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v2, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "X" : "⬜"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[3]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v3, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[3]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v3, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "Y" : "△"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[4]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v4, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[4]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v4, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "LB" : "L1"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[5]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v5, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[5]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v5, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "RB" : "R1"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[6]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v6, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[6]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v6, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "LT" : "L2"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[7]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v7, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[7]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v7, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "RT" : "R2"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[8]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v8, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[8]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v8, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "Back" : "Share"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[9]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v9, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[9]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v9, X
 GUI, Add, Text, W%textWidth% xs R1 Right, % vXBox ? "Start" : "Option"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[10]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v10, X
-GUI, Add, Text, w45 xp+20 ys R1 Right Section, % vXBox ? "LS" : "L3"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[11]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v11, X
-GUI, Add, Text, w45 xp+20 ys R1 Right Section, % vXBox ? "RS" : "R3"
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[12]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v12, X
-GUI, Add, Text, w45 xp+20 ys R1 Right Section, D-Up
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[13]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v13, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[10]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v10, X
+GUI, Add, Text, w45 xp+182 ys R1 Right Section, % vXBox ? "LS" : "L3"
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[11]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v11, X
+GUI, Add, Text, w45 xs ys+26 R1 Right, % vXBox ? "RS" : "R3"
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[12]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v12, X
+GUI, Add, Text, w45 xs ys+60 R1 Right Section, D-Up
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[13]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v13, X
 GUI, Add, Text, w80 xs-35 R1 Right, D-Down
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[14]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v14, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[14]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v14, X
 GUI, Add, Text, w80 xs-35 R1 Right, D-Left
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[15]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v15, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[15]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v15, X
 GUI, Add, Text, w80 xs-35 R1 Right, D-Right
-GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[16]
-GUI, Add, Button, xp+85 yp-1 w19 gClearOne v16, X
+GUI, Add, Edit, W%editWidth% R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNum[16]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v16, X
+GUI, Add, Edit, W%editWidth% R1 xp-358 yp-137 Center ReadOnly -TabStop, % KeyListByNum[17]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v17, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[18]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v18, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[19]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v19, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[20]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v20, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[21]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v21, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[22]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v22, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[23]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v23, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[24]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v24, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[25]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v25, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[26]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v26, X
+GUI, Add, Edit, W%editWidth% R1 xs+214 ys-63 Center ReadOnly -TabStop Section, % KeyListByNum[27]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v27, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[28]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v28, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+35 Center ReadOnly -TabStop, % KeyListByNum[29]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v29, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[30]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v30, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[31]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v31, X
+GUI, Add, Edit, W%editWidth% R1 xp-%editWidth% yp+27 Center ReadOnly -TabStop, % KeyListByNum[32]
+GUI, Add, Button, xp+%editWidth2% yp-1 w%XWidth% gClearOne v32, X
 GUI, Add, Text, w0 xs-35 R1 Right, Dummy
 
-GUI, Add, Text, w0 xm+230 R1 Right, Dummy
+GUI, Add, Text, w0 xm+400 R1 Right, Dummy
 GUI, Add, Button, xp yp-30 w80 gSaveButton Section, Save
 GUI, Add, Button, x+m w80 gCancelButton, Cancel
 GUI, Add, Button, xs yp-30 w170 gAutoLoop, Auto Cycle
 GUI, Add, Button, xs yp-30 w170 gClearButton, Clear All
+GUI, Add, Text, ys-60 R1 Left Section, Set up two keys/controller input`nKey combinations are supported
 
 GUI, Show,, KeyList Helper
 GuiControl, Focus, LoseFocus
 Return
 
 ClearButton:
+	GUI, KeyHelper:Default
+	Loop % numEdits * 2
+		GUIControl,,Edit%A_Index%,
+Return
+
+ClearButtonBB:
 	GUI, KeyHelper:Default
 	Loop %numEdits%
 		GUIControl,,Edit%A_Index%,
@@ -1762,6 +1963,7 @@ KeyHelperGUIClose:
 		Return
 	Hotkey, IF, KeyHelperRunning(setToggle)
 	HotKey,~LButton, getControl, Off
+	HotKey,~LButton, getControlSimple, Off
 	Hotkey, IF
 	GUI, Main:-Disabled
 	GUI, KeyHelper:Destroy
@@ -1771,7 +1973,23 @@ SaveButton:
 	tempList := ""
 	Loop %numEdits%
 	{
+	Secondary:=A_Index+numEdits
 	GUIControlGet, tempKey,,Edit%A_Index%
+	GUIControlGet, tempKeySecondary,,Edit%Secondary%
+	If (tempKey and !tempKeySecondary) or (!tempKey and !tempKeySecondary) {
+		tempList .= tempKey . ","
+		continue
+	}
+	If (!tempKey and tempKeySecondary) {
+		tempList .= tempKeySecondary . ","
+		continue
+	}
+	If (tempKey and tempKeySecondary) {
+		tempList .= tempKey . "|"
+		tempList .= tempKeySecondary . ","
+		continue
+	}
+	GUIControlGet, tempKey,,Edit%alt%
 		tempList .= tempKey . ","
 	}
 	tempList := SubStr(tempList,1, StrLen(tempList)-1)
@@ -1807,9 +2025,23 @@ getControl:
 	GuiControl, Focus, LoseFocus
 Return
 
+getControlSimple:
+	GUI, KeyHelper:Default
+	KeyWait, LButton
+
+	setToggle := True
+	MouseGetPos,,, mouseWin, useControl, 1
+	IF (InStr(useControl, "Edit") AND mouseWin = KeyHelperHWND)
+		GetKeySimple()
+	setToggle := False
+
+	; clearFocus:
+	GuiControl, Focus, LoseFocus
+Return
+
 setWalkModKey:
 	MouseGetPos,,,,useControl,1
-	GetKey()
+	opwalkModifierKey:=GetKeySimple()
 Return
 
 AutoLoop:
@@ -1820,6 +2052,12 @@ AutoLoop:
 	Loop %numEdits% {
 		useControl := "Edit" . A_Index
 		GetKey()
+		If GetKeyState("LCtrl","P")	;prevent issues during auto-loop
+			keywait, LCtrl
+		If GetKeyState("LAlt","P")
+			keywait, LAlt
+		If GetKeyState("LShift","P")
+			keywait, LShift
 	}
 	setToggle := False
 	Loop 4
@@ -1832,15 +2070,15 @@ KeyHelperRunning(setTog){
 	Return (WinActive("KeyList Helper") AND !setTog)
 }
 
-GetKey() {
+GetKeySimple() {	;use separate function for non-main keybinds
 	Global
 	GoSub, TurnOn
 	MousePressed := False
 	GUIControl, -E0x200, %useControl%
 	GuiControl,Text, %useControl%, Waiting
-	ih.Start()
-	ErrorLevel := ih.Wait()
-	singleKey := ih.EndKey
+	ihSimple.Start()
+	ErrorLevel := ihSimple.Wait()
+	singleKey := ihSimple.EndKey
 	GoSub, TurnOff
 	
 	IF (MousePressed)
@@ -1861,58 +2099,160 @@ GetKey() {
 Return singleKey
 }
 
+GetKey() {
+	Global
+	GoSub, TurnOn
+	EndIH:=0
+	DetectSingleModifiersSet:=0
+	MousePressed := False
+	GUIControl, -E0x200, %useControl%
+	GuiControl,Text, %useControl%, Waiting
+	; ih.Start()
+	; ErrorLevel := ih.Wait()
+	; singleKey := ih.EndKey
+	
+	ih := InputHook()
+	ih.KeyOpt("{All}", "E")
+    ih.KeyOpt("{LCtrl}{LAlt}{LShift}", "-E +N")	;only allow left ctrl/shift/alt
+	ih.KeyOpt("{RCtrl}{RShift}{LWin}{RWin}", "-E +S -N")
+	ih.OnKeyDown := Func("DetectSingleModifiers")
+	ih.OnKeyUp := Func("EndInputHook")
+    ih.Start()
+    ErrorLevel := ih.Wait()
+	
+	If !EndIH	;skip line below when InputHook was ended by a single modifier
+		singleKey := ih.EndMods . ih.EndKey
+	
+	GoSub, TurnOff
+	
+	IF (MousePressed)
+		singleKey := MousePressed
+	Else IF (InStr(singleKey,",") OR InStr(singleKey,"=") OR InStr(singleKey,"RAlt")) ; Comma and equal sign Don't work, RAlt also
+		singleKey := ""
+	
+	; singleKey := RegexReplace(singleKey, "Control", "Ctrl")	;not needed anymore
+	
+	singleKey:=alterModifiers(singleKey)	;modifier magic
+
+	GuiControl, Text, %useControl%, %singleKey%
+	GUIControl, +E0x200, %useControl%
+	Loop % numEdits * 2
+	{
+		GUIControlGet, tempKey,,Edit%A_Index%
+		IF (tempKey = singleKey AND useControl != "Edit" . A_Index)
+			GuiControl, Text, Edit%A_Index%,
+	}
+Return singleKey
+}
+
+DetectSingleModifiers(ih) {
+	Global DetectSingleModifiersSet, singleKey
+	If !DetectSingleModifiersSet {
+		If GetKeyState("LCtrl","P") {
+			singleKey:="LCtrl"
+			DetectSingleModifiersSet:=1
+		} Else If GetKeyState("LAlt","P") {
+			singleKey:="LAlt"
+			DetectSingleModifiersSet:=1
+		} Else If GetKeyState("LShift","P") {
+			singleKey:="LShift"
+			DetectSingleModifiersSet:=1
+		} Else If GetKeyState("RAlt","P") {
+			ih.Stop()
+		}
+	}
+}
+
+EndInputHook(ih) {
+	Global EndIH
+	EndIH:=1
+	ih.Stop()
+}
+
+alterModifiers(singleKey) {
+	If (singleKey="<^")
+		singleKey := "LCtrl"
+	If (singleKey="<!")
+		singleKey := "LAlt"
+	If (singleKey="<+")
+		singleKey := "LShift"
+	If ((singleKey="<^<!") or (singleKey="<^<+") or (singleKey="<!<+") or (singleKey="<^<!<+")) {	;do not allow double/triple modifiers on their own
+		Return
+	}
+	singleKey := RegexReplace(singleKey, "\<\^", "LCtrl+")
+	singleKey := RegexReplace(singleKey, "\<\!", "LAlt+")
+	singleKey := RegexReplace(singleKey, "\<\+", "LShift+")
+	Return singleKey
+}
+
+GetMouseModifiers() {	;function to add modifiers to the mouse buttons
+	If GetKeyState("LCtrl","P")
+		Modifier:="<^"
+	If GetKeyState("LAlt","P")
+		Modifier:=Modifier . "<!"
+	If GetKeyState("LShift","P")
+		Modifier:=Modifier . "<+"
+	Return Modifier
+}
+
 WM_LBUTTONDOWN() {
 	Global useControl, MousePressed
 	Send, {Esc}
-	MousePressed := "LButton"
+	Modifier:=GetMouseModifiers()
+	MousePressed := Modifier . "LButton"
 	Return 0
 }
 
 WM_RBUTTONDOWN() {
 	Global useControl, MousePressed
 	Send, {Esc}
-	MousePressed := "RButton"
+	Modifier:=GetMouseModifiers()
+	MousePressed := Modifier . "RButton"
 	Return 0
 }
 
 WM_MBUTTONDOWN() {
 	Global useControl, MousePressed
 	Send, {Esc}
-	MousePressed := "MButton"
+	Modifier:=GetMouseModifiers()
+	MousePressed := Modifier . "MButton"
 	Return 0
 }
 
 WM_XBUTTONDOWN(w) {
 	Global useControl, MousePressed
 	Send, {Esc}
+	Modifier:=GetMouseModifiers()
 	SetFormat, IntegerFast, Hex
-	IF ((w & 0xFF) = 0x20)
-		MousePressed := "XButton1"
-	Else IF((w & 0xFF) = 0x40)
-		MousePressed := "XButton2"
+	IF ((w & 0xF0) = 0x20)	;changed 0xFF -> 0xF0 because modifier+XButton resulted in a different value
+		MousePressed := Modifier . "XButton1"
+	Else IF((w & 0xF0) = 0x40)	;changed 0xFF -> 0xF0 because modifier+XButton resulted in a different value
+		MousePressed := Modifier . "XButton2"
 	Return 0
 }
 
 WM_MOUSEHWHEEL(w) {
 	Global useControl, MousePressed
 	Send, {Esc}
+	Modifier:=GetMouseModifiers()
 	SetFormat, IntegerFast, Hex
 	IF ((w & 0xFF0000) = 0x780000)
-		MousePressed := "WheelRight"
+		MousePressed := Modifier . "WheelRight"
 	Else IF((w & 0xFF0000) = 0x880000)
-		MousePressed := "WheelLeft"
+		MousePressed := Modifier . "WheelLeft"
 	Return 0
 }
 
 WM_MOUSEWHEEL(w) {
 	Global useControl, MousePressed
 	Send, {Esc}
+	Modifier:=GetMouseModifiers()
 	SetFormat, IntegerFast, Hex
 	MousePressed := "" . w + 0x0
 	IF ((w & 0xFF0000) = 0x780000)
-		MousePressed := "WheelUp"
+		MousePressed := Modifier . "WheelUp"
 	Else IF((w & 0xFF0000) = 0x880000)
-		MousePressed := "WheelDown"
+		MousePressed := Modifier . "WheelDown"
 	Return 0
 }
 
