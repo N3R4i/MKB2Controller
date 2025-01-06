@@ -1,4 +1,4 @@
-Version 1.1.0
+Version 1.2.0
 
 **SETUP GUIDE AT THE BOTTOM**
 
@@ -12,7 +12,7 @@ Acknowledgements
 MKB2Controller allows the user to control a virtual controller with mouse and keyboard. Main purpose is for emulators and games that don't have mouse and keyboard support. Requires ViGEmBus to emulate the virtual controller. Based on Helgef's and CemuUser8's mouse2joystick.
 
 ## Main features
- * Supports both XInput and DirectInput virtual controllers. High precision mouse to analogue stick conversion with scalable sensitivity, optional deadzone compensation, mouse acceleration. Mouse/movement keys can be assigned to either stick. Option for movement smoothing. Inverted axis option. Main keybinds can be saved into separate profiles. Walk modifier key (both hold and toggle modes).
+ * Supports both XInput and DirectInput virtual controllers. High precision mouse to analogue stick conversion with scalable sensitivity, optional deadzone compensation, mouse acceleration. Mouse/movement keys can be assigned to either stick. Option for movement smoothing. Inverted axis option. Main keybinds can be saved into separate profiles. Support for key combinations (LCtrl/LAlt/LShift+key) and dual binds for the main keybinds.  Walk modifier key (both hold and toggle modes).
  * **BloodBorne Bonus Buttons [B<sup>4</sup>]** - Extra hotkeys specifically for Bloodborne. These hotkeys require the [Jump on L3 mod](https://www.nexusmods.com/bloodborne/mods/156?tab=description) to function properly.
 
 ## Known Issues
@@ -40,15 +40,15 @@ With the later version of shadPS4, these issues seem be to resolved.
   * Deadzone Compensation - Used to eliminate ingame deadzone. Causes the stick tilt to start at the specified value. E.g. 0.5 will make the stick tilt start at 50% of its full range. Should be the same as the game's deadzone to improve mouse precision.
   * Mouse Acceleration - Exponent to control the mouse speed/camera sensitivity curve. Fast camera movement becomes even faster, slow camera movement is less affected. Set to 0 to turn it off.
   * Invert X/Y-Axis - self explanatory
-  * Mouse to stick L/R - Choose which stick to control with the mouse
+  * Mouse to stick L/R/N - Choose which stick to control with the mouse. When set to None, the cursor is not locked.
 * **Keyboard-Movement**
   * Keyboard Movement - self explanatory
-  * Movement Smoothing - Adds transition when changing movement direction. Makes the character turning smoother, useful when trying to run in circles.
+  * Movement Smoothing Increment - Allowed range: 0.1-1. Set to 1 to disable smoothing. Adds transition when changing movement directions. Makes the character turning smoother. This is mainly for Bloodborne to fix the animation stutter, when the player is turning.
   * Walk Modifier - Set up keys for walking and increasing/decreasing walking speed. Check toggle if you want toggle mode instead of hold mode.
   * Invert X/Y-Axis - self explanatory
   * Movement to stick L/R - Choose which stick to control with the movement keys
 * **Keybinds**
-	* KeyList Helper - This is where you can conveniently set up your main keybinds
+	* KeyList Helper - This is where you can conveniently set up your main keybinds. Key combinations with LCtrl/LAlt/LShift are supported. Two keys can be set per controller button through the interface. Any amount of additional keys can be set manually, by editing the list and separating the keys with |
 	* Saved KeyList Manager - Allows you to save your main keybinds into separate profiles
 * **Bloodborne**
 	* BonusButtons Bonus Buttons [B<sup>4</sup>] - Extra hotkeys for Bloodborne. [Jump on L3 mod](https://www.nexusmods.com/bloodborne/mods/156?tab=description) is required. Each key does specifically what it says. All dodge and backstep binds are executed on key press, rather than on release.
