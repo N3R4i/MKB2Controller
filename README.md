@@ -48,7 +48,7 @@ With the later version of shadPS4, these issues seem be to resolved.
   * Invert X/Y-Axis - self explanatory
   * Movement to stick L/R - Choose which stick to control with the movement keys
 * **Keybinds**
-	* KeyList Helper - This is where you can conveniently set up your main keybinds. Key combinations with LCtrl/LAlt/LShift are supported. Two keys can be set per controller button through the interface. Any amount of additional keys can be set manually, by editing the list and separating the keys with |
+	* KeyList Helper - This is where you can conveniently set up your main keybinds. **Key combinations with LCtrl/LAlt/LShift are supported. Two keys can be set per controller button through the interface.** Any amount of additional keys can be set manually, by editing the list and separating the keys with |
 	* Saved KeyList Manager - Allows you to save your main keybinds into separate profiles
 * **Bloodborne**
 	* BonusButtons Bonus Buttons [B<sup>4</sup>] - Extra hotkeys for Bloodborne. [Jump on L3 mod](https://www.nexusmods.com/bloodborne/mods/156?tab=description) is required. Each key does specifically what it says. All dodge and backstep binds are executed on key press, rather than on release.
