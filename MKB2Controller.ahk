@@ -1,5 +1,5 @@
 ;	Created by N3R4i
-;	Modified: 2025-01-06
+;	Modified: 2025-01-11
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.2.0"
+version := "1.2.1"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -676,7 +676,7 @@ Loop 8 {	;this ensures that buttons don't get stuck
 			controller[ControllerIndex].Buttons.A.SetState(false)
 		Case 2:
 			controller[ControllerIndex].Buttons.B.SetState(false)
-			vSprinting:=1	;to know O button state
+			vSprinting:=0	;to know O button state
 		Case 3:
 			controller[ControllerIndex].Buttons.X.SetState(false)
 		Case 4:
@@ -716,7 +716,7 @@ Gavlan(keyNum) {	;Gavlan Wheel? Gavlan Deal
 			controller[ControllerIndex].Buttons.A.SetState(false)
 		Case 2:
 			controller[ControllerIndex].Buttons.B.SetState(false)
-			vSprinting:=1	;to know O button state
+			vSprinting:=0	;to know O button state
 		Case 3:
 			controller[ControllerIndex].Buttons.X.SetState(false)
 		Case 4:
