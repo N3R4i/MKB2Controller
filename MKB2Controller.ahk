@@ -1,5 +1,5 @@
 ;	Created by N3R4i
-;	Modified: 2025-01-11
+;	Modified: 2025-01-17
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.2.1"
+version := "1.3.0"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -45,11 +45,14 @@ IfNotExist, settings.ini
 (
 [General]
 usevXBox=1
-gameExe=
+gameExe=shadPS4.exe
 autoActivateGame=0
 controllerSwitchKey=F1
 exitKey=#q
+exitGameKey=#F4
+skipexitGameWarning=0
 hideCursor=1
+checkforUpdates=0
 [Mouse]
 r=80
 interval=1
@@ -76,7 +79,7 @@ MovementStick=0
 [Keybinds]
 joystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
 [Bloodborne]
-joystickButtonKeyListBB=,,,,,,
+joystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 )
 	FileAppend,%defaultSettings%,settings.ini
 	IF (ErrorLevel) {
@@ -133,6 +136,8 @@ IF (controllerSwitchKey)
 	Hotkey,%controllerSwitchKey%,controllerSwitch, on
 IF (exitKey)
 	Hotkey,%exitKey%,exitFunc, on
+IF (exitGameKey)
+	Hotkey,%exitGameKey%,exitGameFunc, on
 
 Mouse2Controller := True
 IF (Mouse2Controller) {
@@ -162,6 +167,7 @@ Menu,Tray,Add,Reset to default, IniWriteDefault
 Menu,Tray,Add
 Menu,Tray,Add,About,aboutMenu
 Menu,Tray,Add,Help,helpMenu
+Menu,Tray,Add,Check for updates,checkforUpdatesNow
 Menu,Tray,Add
 Menu,Tray,Add,Reload,reloadMenu
 Menu,Tray,Add,Exit,exitFunc
@@ -178,8 +184,11 @@ snapToFullTilt:=0.005						; This needs to be improved.
 
 ; Spam user with useless info, first time script runs.
 IF (firstRun)
-	MsgBox,64,Welcome,Settings are accessed via Tray icon -> Settings.
-
+	MsgBox,64,MKB2Controller,Welcome Good Hunter!`nSettings are accessed via the Tray icon -> Settings.
+IfMsgBox Ok
+	GoSub openSettings
+If (checkforUpdates)
+	GoSub checkforUpdatesOnStartup
 Return
 ; End autoexec.
 
@@ -192,7 +201,7 @@ aboutMenu:
 Return
 
 helpMenu:
-	Msgbox,% 4 + 32 ,, If you need help with MKB2Controller, seek me out on GitHub.`n`nOpen link in browser?`nhttps://github.com/N3R4i/MKB2Controller
+	Msgbox,% 4 + 32 ,, If you need help with MKB2Controller, contact me on GitHub.`n`nOpen link in browser?`nhttps://github.com/N3R4i/MKB2Controller
 	IfMsgBox Yes
 		Run, https://github.com/N3R4i/MKB2Controller
 Return
@@ -223,7 +232,7 @@ controllerSwitch:
 			WinActivate,ahk_exe %gameExe%
 			WinWaitActive, ahk_exe %gameExe%,,2
 			IF (ErrorLevel) {	
-				MsgBox,16,Error, %gameExe% not activated.
+				MsgBox,16,Error, Couldn't alt+tab to the game`n`n%gameExe% is not running.
 				Return
 			}
 			WinGetPos,gameX,gameY,gameW,gameH,ahk_exe %gameExe%	; Get game screen position and dimensions
@@ -592,6 +601,32 @@ long:=100
 	controller[ControllerIndex].Buttons.A.SetState(False)
 return
 actionBB7Up:
+Return
+
+actionBB8:	;Switch target <-
+If !alreadyactionBB8 {
+	If !InStr(KeyListByNumBB[8], "wheel")
+		alreadyactionBB8:=1
+	setStick(-1,"N/A")
+	sleep 100
+	setStick(0,"N/A")
+}
+return
+actionBB8Up:
+	alreadyactionBB8:=0
+Return
+
+actionBB9:	;Switch target ->
+If !alreadyactionBB9 {
+	If !InStr(KeyListByNumBB[9], "wheel")
+		alreadyactionBB9:=1
+	setStick(1,"N/A")
+	sleep 100
+	setStick(0,"N/A")
+}
+return
+actionBB9Up:
+	alreadyactionBB9:=0
 Return
 
 ; Labels for pressing and releasing joystick buttons.
@@ -1212,6 +1247,61 @@ exitFunc() {
 	ExitApp
 }
 
+exitGameFunc() {
+	Global
+	IF (Mouse2Controller)	{
+		setStick(0,0)
+	}
+	temptoggle:=toggle
+	If !toggle
+		GoSub controllerSwitch
+	If skipexitGameWarning {
+		Process, Close, %gameExe%
+		Return
+	}
+	MsgBox,308,MKB2Controller,Close Game?`n%gameExe%
+	IfMsgBox Yes
+		Process, Close, %gameExe%
+	Else If !temptoggle
+		GoSub controllerSwitch
+}
+
+GitVersion(User, Repo) {
+    url := "https://api.github.com/repos/" User "/" Repo "/releases/latest"
+    whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+	ComObjError(false)
+    whr.Open("GET", url, false), whr.Send()
+    RegExMatch(whr.ResponseText, "_name\W+\K[^""]+", tag)
+    return tag
+}
+
+checkforUpdatesOnStartup:
+	GitHubVersion:=GitVersion("N3R4i", "MKB2Controller")
+	If !GitHubVersion {
+		MsgBox,64,MKB2Controller,Couldn't connect to GitHub
+		return
+	}
+	If (VerCompare(GitHubVersion, version)>0)
+		MsgBox,68,MKB2Controller,New version available!`n%version% -> %GitHubVersion%`nOpen GitHub in browser?`n`nhttps://github.com/N3R4i/MKB2Controller/releases/latest
+	IfMsgBox Yes
+		Run, https://github.com/N3R4i/MKB2Controller/releases/latest
+Return
+
+checkforUpdatesNow:
+	GitHubVersion:=GitVersion("N3R4i", "MKB2Controller")
+	If !GitHubVersion {
+		MsgBox,64,MKB2Controller,Couldn't connect to GitHub
+		return
+	}
+	If (VerCompare(GitHubVersion, version)>0) {
+		MsgBox,68,MKB2Controller,New version available!`n%version% -> %GitHubVersion%`nOpen GitHub in browser?`n`nhttps://github.com/N3R4i/MKB2Controller/releases/latest
+		IfMsgBox Yes
+			Run, https://github.com/N3R4i/MKB2Controller/releases/latest
+	} Else {
+		MsgBox,64,MKB2Controller,No updates found
+	}
+Return
+
 ;
 ; End Script.
 ; Start settings.
@@ -1241,30 +1331,36 @@ GUI, Tab, General
 	GUI, Add, Radio, %  "xp+10 yp+20 Group vopusevXBox Checked" . usevXBox, XInput (virtual XBox 360 controller)
 	GUI, Add, Radio, %  "xp yp+20 Checked" . !usevXBox, DirectInput (virtual DualShock 4 controller)
 
-	GUI, Add, GroupBox, x%SX% yp+35 w320 h50,Executable Name (e.g. game.exe)
-	GUI, Add, Edit, xp+10 yp+20 vopgameExe w170, %gameExe% 
+	GUI, Add, GroupBox, x%SX% yp+35 w320 h50,Executable's name (e.g. game.exe)
+	GUI, Add, Edit, xp+10 yp+20 vopgameExe w200, %gameExe% 
 	;GUI, Add, Text, x+m yp+3, (e.g. game.exe)
 	
-	GUI, Add, GroupBox, x%SX% yp+37 w320 h45,Auto Switch
-	GUI, Add, Radio, % "xp+10 yp+20 Group vopautoActivateGame Checked" autoActivateGame, Yes
-	GUI, Add, Radio, % "x+m Checked" !autoActivateGame, No
-	GUI, Add, Text, x+m, Switch to game when toggling controller?
+	GUI, Add, GroupBox, x%SX% yp+37 w320 h45,Auto Alt+Tab
+	GUI, Add, CheckBox, % "xp+10 yp+20 vopautoActivateGame Checked" . autoActivateGame, Alt+Tab to game when toggling controller?
 	
-	GUI, Add, GroupBox, x%SX% yp+37 w320 h50 Section, Toggle Controller On/Off
+	GUI, Add, GroupBox, x%SX% yp+37 w155 h50 Section, Toggle Controller On/Off
 	GUI, Add, Hotkey, xs+10 yp+20 w50 Limit190 vopcontrollerSwitchKey, % StrReplace(controllerSwitchKey, "#")
-	GUI, Add, CheckBox, % "x+m yp+3 vopcontrollerSwitchKeyWin Checked" InStr(controllerSwitchKey, "#"), Use Windows key?
+	GUI, Add, CheckBox, % "x+5 yp+3 vopcontrollerSwitchKeyWin Checked" InStr(controllerSwitchKey, "#"), Use Win key?
 	
-	GUI, Add, GroupBox, x%SX% yp+37 w320 h50 Section, Quit Application
+	GUI, Add, GroupBox, x+11 yp-23 w155 h50,Hide Cursor
+	GUI, Add, CheckBox, % "xp+10 yp+23 vophideCursor Checked" . hideCursor, Hide cursor?
+	
+	GUI, Add, GroupBox, x%SX% yp+37 w155 h50 Section, Quit MKB2Controller
 	GUI, Add, Hotkey, xs+10 yp+20 w50 Limit190 vopexitKey, % StrReplace(exitKey, "#")
-	GUI, Add, CheckBox, % "x+m yp+3 vopexitKeyWin Checked" InStr(exitKey, "#"), Use Windows key?
+	GUI, Add, CheckBox, % "x+5 yp+3 vopexitKeyWin Checked" InStr(exitKey, "#"), Use Win key?
 	
-	GUI, Add, GroupBox, x%SX% yp+37 w320 h45,Hide Cursor
-	GUI, Add, CheckBox, % "xp+10 yp+20 vophideCursor Checked" . hideCursor, Hide cursor when controller toggled on?
+	GUI, Add, GroupBox, x+11 yp-23 w155 h50, Quit Game: %gameExe%
+	GUI, Add, Hotkey, xp+10 yp+20 w50 Limit190 vopexitGameKey, % StrReplace(exitGameKey, "#")
+	GUI, Add, CheckBox, % "x+5 yp+3 vopexitGameKeyWin Checked" InStr(exitGameKey, "#"), Use Win key?
+	
+	GUI, Add, GroupBox, x%SX% yp+37 w320 h48,Updates
+	GUI, Add, Button, xp+10 yp+18 w110 Center -TabStop gcheckforUpdatesNow, Check for updates
+	GUI, Add, CheckBox, % "x+5 yp+5 vopcheckforUpdates Checked" . checkforUpdates, Check for Updates on startup
 ;------------------------------------------------------------------------------------------------------------------------------------------
 GUI, Tab, Mouse
 	GUI, Add, GroupBox, x%SX% y%SY% w320 h50 Section, Resistance
 	GUI, Add, Edit, xs+10 yp+20 w50 vopr gNumberCheck, %r%
-	GUI, Add, Text, x+4 yp+3, Lower values correspond to higher sensitivity 
+	GUI, Add, Text, x+4 yp+3, Lower value = higher sensitivity
 	
 	GUI, Add, GroupBox, xs yp+30 w320 h50, Mouse Check Interval (ms)
 	GUI, Add, Edit, xs+10 yp+20 w50 vopinterval Number, %interval%
@@ -1389,6 +1485,8 @@ mainSave:
 		Hotkey,%controllerSwitchKey%,controllerSwitch, off
 	IF (exitKey)
 		Hotkey,%exitKey%,exitFunc, off
+	IF (exitGameKey)
+		Hotkey,%exitGameKey%,exitGameFunc, off
 		
 	; Joystick buttons
 	Hotkey, If, (!toggle && Mouse2Controller)
@@ -1419,7 +1517,7 @@ mainSave:
 		Hotkey, % (KeyListByNumBB[A_Index]), actionBB%A_Index%, off
 		Hotkey, % (KeyListByNumBB[A_Index]) " Up", actionBB%A_Index%Up, off
 	}
-
+	
 	Loop, Parse, joystickButtonKeyList, `,
 	{
 		useButton := A_Index
@@ -1466,15 +1564,20 @@ mainSave:
 		Hotkey,%controllerSwitchKey%,controllerSwitch, on
 	IF (exitKey)
 		Hotkey,%exitKey%,exitFunc, on
+	IF (exitGameKey)
+		Hotkey,%exitGameKey%,exitGameFunc, on
 Return
 
 IniWriteDefault:
 defaultusevXBox=1
-defaultgameExe=
+defaultgameExe=shadPS4.exe
 defaultautoActivateGame=0
 defaultcontrollerSwitchKey=F1
 defaultexitKey=#q
+defaultexitGameKey=#F4
+defaultskipexitGameWarning=0
 defaulthideCursor=1
+defaultcheckforUpdates=0
 defaultr=80
 defaultinterval=1
 defaultminmove=0.37
@@ -1497,13 +1600,16 @@ defaultinvertedLX=0
 defaultinvertedLY=0
 defaultMovementStick=0
 defaultjoystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
-defaultjoystickButtonKeyListBB=,,,,,,
+defaultjoystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 	IniWrite, % defaultusevXBox, settings.ini, General, usevXBox
 	IniWrite, % defaultgameExe, settings.ini, General, gameExe
 	IniWrite, % defaultautoActivateGame, settings.ini, General, autoActivateGame
 	IniWrite, % defaultcontrollerSwitchKey, settings.ini, General, controllerSwitchKey
 	IniWrite, % defaultexitKey, settings.ini, General, exitKey
+	IniWrite, % defaultexitGameKey, settings.ini, General, exitGameKey
+	IniWrite, % defaultskipexitGameWarning, settings.ini, General, skipexitGameWarning
 	IniWrite, % defaulthideCursor, settings.ini, General, hideCursor
+	IniWrite, % defaultcheckforUpdates, settings.ini, General, checkforUpdates
 	;Write Mouse
 	IniWrite, % defaultr, settings.ini, Mouse, r
 	IniWrite, % defaultinterval, settings.ini, Mouse, interval
@@ -1542,10 +1648,12 @@ SubmitAll:
 	; Write General
 	IniWrite, % 2-opusevXBox, settings.ini, General, usevXBox
 	IniWrite, % opgameExe, settings.ini, General, gameExe
-	IniWrite, % 2-opautoActivateGame, settings.ini, General, autoActivateGame
+	IniWrite, % opautoActivateGame, settings.ini, General, autoActivateGame
 	IniWrite, % opcontrollerSwitchKeyWin ? "#" . opcontrollerSwitchKey : opcontrollerSwitchKey, settings.ini, General, controllerSwitchKey
 	IniWrite, % opexitKeyWin ? "#" . opexitKey : opexitKey, settings.ini, General, exitKey
+	IniWrite, % opexitGameKeyWin ? "#" . opexitGameKey : opexitGameKey, settings.ini, General, exitGameKey
 	IniWrite, % ophideCursor, settings.ini, General, hideCursor
+	IniWrite, % opcheckforUpdates, settings.ini, General, checkforUpdates
 	;Write Mouse
 	IniWrite, % opr, settings.ini, Mouse, r
 	IniWrite, % opinterval, settings.ini, Mouse, interval
@@ -1577,8 +1685,8 @@ SubmitAll:
 	IniWrite, % opjoystickButtonKeyList, settings.ini, Keybinds, joystickButtonKeyList
 	;Bloodborne
 	IniWrite, % opjoystickButtonKeyListBB, settings.ini, Bloodborne, joystickButtonKeyListBB
-	; Write Extra Settings
-	;IF (RegexMatch(opjoystickButtonKeyList, "i)wheel(down|up)")) ; If wheeldown/up is part of the keylist you cannot use the special wheel functions for BotW
+	If ErrorLevel
+		MsgBox,48,MKB2Controller,Couldn't write settings to settings.ini.`nMake sure you have write permission at:`n`n"%A_ScriptDir%"`n`nTry running the app as admin, or move it to a different directory.	
 Return
 
 selectionPath(ID) {
@@ -1707,11 +1815,14 @@ setSettingsToDefault:
 	pairsDefault=
 (
 usevXBox=1
-gameExe=
+gameExe=shadPS4.exe
 autoActivateGame=0
 controllerSwitchKey=F1
 exitKey=#q
+exitGameKey=#F4
+skipexitGameWarning=0
 hideCursor=1
+checkforUpdates=0
 r=80
 interval=1
 minmove=0.37
@@ -1734,7 +1845,7 @@ invertedLX=0
 invertedLY=0
 MovementStick=0
 joystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
-joystickButtonKeyListBB=,,,,,,
+joystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 )
 	Loop,Parse,pairsDefault,`n
 	{
@@ -1753,6 +1864,7 @@ Hotkey, IF
 GUI, Main:Default
 GUIControlGet, getKeyList,, opjoystickButtonKeyListBB
 KeyListByNumBB := []
+numEdits := 9
 Loop, Parse, getKeyList, `,
 {
 	keyName := A_LoopField
@@ -1761,7 +1873,6 @@ Loop, Parse, getKeyList, `,
 	KeyListByNumBB[A_Index] := keyName
 }
 textWidth := 85
-numEdits := 7
 setToggle := False
 GUI, Main:+Disabled
 GUI, KeyHelper:New, +HWNDKeyHelperHWND -MinimizeBox +OwnerMain
@@ -1789,6 +1900,12 @@ GUI, Add, Button, xp+85 yp-1 w19 gClearOne v6, X
 GUI, Add, Text, W%textWidth% xs R1 Right, Save&&Quit
 GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNumBB[7]
 GUI, Add, Button, xp+85 yp-1 w19 gClearOne v7, X
+GUI, Add, Text, W%textWidth% xs R1 Right, Switch target <-
+GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNumBB[8]
+GUI, Add, Button, xp+85 yp-1 w19 gClearOne v8, X
+GUI, Add, Text, W%textWidth% xs R1 Right, Switch target ->
+GUI, Add, Edit, W80 R1 x+m yp-3 Center ReadOnly -TabStop, % KeyListByNumBB[9]
+GUI, Add, Button, xp+85 yp-1 w19 gClearOne v9, X
 GUI, Add, Text, w0 xs R1 Right, Dummy
 
 GUI, Add, Button, ys+122 w170 gClearButtonBB Section, Clear All
@@ -1796,7 +1913,8 @@ GUI, Add, Button, xs w80 gSaveButtonBB, Save
 GUI, Add, Button, x+m w80 gCancelButton, Cancel
 GUI, Add, Text, w0 yp+15 R1 Right, Dummy
 
-GUI, Add, Text, xs+10 yp-170 R1 Left, Most of these only work correctly`nwith the Jump on L3 mod`n`nKey combinations`nare not supported
+GUI, Add, GroupBox, xs+30 yp-170 w111 h80
+GUI, Add, Text, xp+6 yp+10 R1 Left, Most of these require`nthe Jump on L3 mod`n`nKey combinations`nare not supported
 
 GUI, Show,, KeyList Helper
 GuiControl, Focus, LoseFocus
@@ -1811,14 +1929,7 @@ Hotkey, IF
 GUI, Main:Default
 GUIControlGet, getKeyList,, opjoystickButtonKeyList
 KeyListByNum := []
-IF (vXBox) {
-	textWidth := 50
-	numEdits := 16
-}
-Else {
-	textWidth := 50
-	numEdits := 16
-}
+numEdits := 16
 Loop, Parse, getKeyList, `,
 {
 	useButton := A_Index
@@ -1838,6 +1949,7 @@ Loop, Parse, getKeyList, `,
 		KeyListByNum[useButton] := keyName
 	}
 }
+textWidth := 50
 editWidth:=140
 editWidth2:=editWidth
 XWidth:=19
@@ -1934,7 +2046,8 @@ GUI, Add, Button, xp yp-30 w80 gSaveButton Section, Save
 GUI, Add, Button, x+m w80 gCancelButton, Cancel
 GUI, Add, Button, xs yp-30 w170 gAutoLoop, Auto Cycle
 GUI, Add, Button, xs yp-30 w170 gClearButton, Clear All
-GUI, Add, Text, ys-60 R1 Left Section, Set up two keys/controller input`nKey combinations are supported
+GUI, Add, GroupBox, ys-60 w202 h42 Section
+GUI, Add, Text, xp+6 yp+10 R1 Left Section, Set up two keys for each controller input`nKey combinations are supported
 
 GUI, Show,, KeyList Helper
 GuiControl, Focus, LoseFocus
@@ -1967,6 +2080,7 @@ KeyHelperGUIClose:
 	Hotkey, IF
 	GUI, Main:-Disabled
 	GUI, KeyHelper:Destroy
+	GoSub mainSave
 Return
 
 SaveButton:
