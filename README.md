@@ -1,4 +1,4 @@
-Version 1.2.0
+Version 1.3.0
 
 **SETUP GUIDE AT THE BOTTOM**
 
@@ -30,10 +30,13 @@ With the later version of shadPS4, these issues seem be to resolved.
 * **General**
   * Output Mode - Choose between XInput and DirectInput
   * Executable Name - Enter the executable's full name
-  * Auto Switch - Will automatically switch to the game window when toggling on the controller
+  * Auto Alt+Tab - Will automatically alt+tab to the game window when toggling on the controller
   * Toggle Controller On/Off - Set the key to toggle the controller (Default F1)
-  * Quit Application - Set a hotkey to close the app
-  * Hide Cursor - Show/Hide the cursor when the controller is switched on 
+  * Hide Cursor - Show/Hide the cursor when the controller is switched on
+  * Quit MKB2Controller - Set a hotkey to close the app
+  * Quit Game - Set a hotkey to close the game (set in the executable name). A confirmation window will pop up.
+  * Check for updates - Connects to GitHub to compare the version numbers
+  * Check for updates on startup - self explanatory
 * **Mouse**
   * Resistance - Controls the camera sensitivity. Higher resistance=lower sensitivity and vice-versa
   * Mouse Check Interval (ms) - Value in ms. This is how often the mouse position is checked and reset back to the center. Higher value causes delayed camera control. Should be 1.
@@ -59,6 +62,8 @@ With the later version of shadPS4, these issues seem be to resolved.
 		* **Jump** - Dedicated jump key | It makes you jump
 		* **Jump Attack** - Dedicated jump attack key | Does a jump attack. Can be used while standing still/running/sprinting.
 		* **Save&Quit** - For tight situations
+  		* **Switch target <-** - Hotkey to switch target when locked on (it flicks the stick in the indicated direction). This is intended when the app is used in tandem with the "Move camera with mouse" mod.
+		* **Switch target ->** - Same as above
 
 # Setup Guide
 1. Download and install ViGEmBus [Windows 10/11](https://github.com/nefarius/ViGEmBus/releases/tag/v1.22.0) | [Windows 7/8.1](https://github.com/nefarius/ViGEmBus/releases/tag/setup-v1.16.116)<sup>1 2</sup>
