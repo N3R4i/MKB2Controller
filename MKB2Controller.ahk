@@ -1,5 +1,5 @@
 ;	Created by N3R4i
-;	Modified: 2025-02-01
+;	Modified: 2025-02-15
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.3.1"
+version := "1.4.0"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -68,7 +68,8 @@ leftKey=a
 downKey=s
 rightKey=d
 movementSmoothing=1
-movementIncrement=0.9
+movementIncrement=0.8
+menuModifierKey=LCtrl
 walkModifierKey=LAlt
 walkToggleMode=0
 increaseWalkKey=NumpadAdd
@@ -78,7 +79,7 @@ invertedLX=0
 invertedLY=0
 MovementStick=0
 [Keybinds]
-joystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
+joystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,g,Tab,,q,Home,End,Left,Right
 [Bloodborne]
 joystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 )
@@ -124,6 +125,11 @@ KeyList := []
 KeyListByNum := []
 KeyListByNumBB := []	;Bloodborne key list
 Global controller := []	;controller[1]=vXBox | controller[2]=vDS4
+Global dpadCounter:=0
+Global dpadOrder := []
+Global dpadPress := []
+directionX:=0
+directionY:=0
 yminus:=0
 yplus:=0
 xminus:=0
@@ -834,16 +840,18 @@ KeepStickHowItWas() {
 }
 
 MovementTimer:
-; Loop 7 {
-	; If overrideButton[leftKey . A_Index] and movementDisable(A_Index)
-		; Return
-	; If overrideButton[rightKey . A_Index] and movementDisable(A_Index)
-		; Return
-	; If overrideButton[downKey . A_Index] and movementDisable(A_Index)
-		; Return
-	; If overrideButton[upKey . A_Index] and movementDisable(A_Index)
-		; Return
-; }
+If (GetKeyState(menuModifierKey,"P")) {
+	if !AlreadyAtZero {
+		setStickLeft(0,0)
+		AlreadyAtZero:=1
+	}
+	if 	AlreadyAtNone
+		AlreadyAtNone:=0
+} else {
+	if !AlreadyAtNone {
+		setdPad(0,0)
+		AlreadyAtNone:=1
+	}
 	If (GetKeyState(leftKey,"P")) {
 		xminus+=movementIncrement
 		If (xminus>1)
@@ -887,88 +895,89 @@ MovementTimer:
 		setStickLeft(0,0)
 		AlreadyAtZero:=1
 	}
+}
 Return
 
 overwriteUp:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	directionY:=1
 	If !alreadyUp {
-		setStickLeft(directionX,directionY)
+		setdPad(directionX,directionY)
 		alreadyUp:=1
 	}
 }
 Return
 overwriteUpup:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	IF (GetKeyState(downKey, "P")) {
 		directionY:=-1
 	} Else {
 		directionY:=0
 	}
-	setStickLeft(directionX,directionY)
+	setdPad(directionX,directionY)
 	alreadyUp:=0
 }
 Return
 
 overwriteLeft:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	directionX:=-1
 	If !alreadyLeft {
-		setStickLeft(directionX,directionY)
+		setdPad(directionX,directionY)
 		alreadyLeft:=1
 	}
 }
 Return
 overwriteLeftup:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	IF (GetKeyState(rightKey, "P")) {
 		directionX:=1
 	} Else {
 		directionX:=0
 	}
-	setStickLeft(directionX,directionY)
+	setdPad(directionX,directionY)
 	alreadyLeft:=0
 }
 Return
 
 overwriteRight:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	directionX:=1
 	If !alreadyRight {
-		setStickLeft(directionX,directionY)
+		setdPad(directionX,directionY)
 		alreadyRight:=1
 	}
 }
 Return
 overwriteRightup:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	IF (GetKeyState(leftKey, "P")) {
 		directionX:=-1
 	} Else {
 		directionX:=0
 	}
-	setStickLeft(directionX,directionY)
+	setdPad(directionX,directionY)
 	alreadyRight:=0
 }
 Return
 
 overwriteDown:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	directionY:=-1
 	If !alreadyDown {
-		setStickLeft(directionX,directionY)
+		setdPad(directionX,directionY)
 		alreadyDown:=1
 	}
 }
 Return
 overwriteDownup:
-If !movementSmoothing {
+If (GetKeyState(menuModifierKey,"P")) {
 	IF (GetKeyState(upKey, "P")) {
 		directionY:=1
 	} Else {
 		directionY:=0
 	}
-	setStickLeft(directionX,directionY)
+	setdPad(directionX,directionY)
 	alreadyDown:=0
 }
 Return
@@ -1224,6 +1233,30 @@ setStickLeft(x,y) {	;easier to use a separate function for left stick, as a lot 
 	}
 }
 
+setdPad(x,y) {	;used for the menuModifier
+	Direction:=3*x+y
+	If (Direction=4) {
+		Direction:="UpRight"
+	} else If (Direction=3) {
+		Direction:="Right"
+	} else If (Direction=2) {
+		Direction:="DownRight"
+	} else If (Direction=1) {
+		Direction:="Up"
+	} else If (Direction=-1) {
+		Direction:="Down"
+	} else If (Direction=-2) {
+		Direction:="UpLeft"
+	} else If (Direction=-3) {
+		Direction:="Left"
+	} else If (Direction=-4) {
+		Direction:="DownLeft"
+	} else {
+		Direction:="None"
+	}
+	controller[ControllerIndex].Dpad.SetState(Direction)
+}
+
 ; Shared functions
 getAngle(x,y) {
 	Global pi
@@ -1406,8 +1439,12 @@ GUI, Tab, Keyboard-Movement
 	
 	; Gui, Add, CheckBox, % "xs+110 ys+22 vopmovementSmoothing Checked" . movementSmoothing, Movement Smoothing
 	; GUI, Add, Text, xp yp+20, Smoothing Increment `nRecommended 0.25-0.9
-	GUI, Add, Text, xs+110 ys+22, Movement `nSmoothing Increment `nRecommended 0.25-0.9 `nSet to 1 to disable
+	GUI, Add, Text, xs+110 ys+22, Movement `nSmoothing Increment `nRecommended 0.25-0.8 `nSet to 1 to disable
 	GUI, Add, Edit, xp yp+55 w50 vopmovementIncrement gNumberCheck, %movementIncrement%
+
+	GUI, Add, GroupBox, xs w320 h55, Menu Modifier
+	GUI, Add, Button, xs+10 yp+20 w70 Center -TabStop gsetMenuModKey vopmenuModifierKey, %menuModifierKey%	;better to have this as a button
+	GUI, Add, Text, xp+75 yp+5 Left w230, Changes movement keys into D-Pad when held
 
 	GUI, Add, GroupBox, xs w320 h80, Walk Modifier
 	GUI, Add, Button, xs+10 yp+20 w70 Center -TabStop gsetWalkModKey vopwalkModifierKey, %walkModifierKey%	;better to have this as a button
@@ -1480,6 +1517,10 @@ mainOk:
 mainSave:
 	Gui, Main:Submit, NoHide
 	opmovementSmoothing:=1	;ensure that this is always 1
+	If opmenuModifierKey	;this is needed because this key assignment uses a button
+		menuModifierKey:=opmenuModifierKey
+	Else
+		opmenuModifierKey:=menuModifierKey
 	If opwalkModifierKey	;this is needed because this key assignment uses a button
 		walkModifierKey:=opwalkModifierKey
 	Else
@@ -1597,7 +1638,8 @@ defaultleftKey=a
 defaultdownKey=s
 defaultrightKey=d
 defaultmovementSmoothing=1
-defaultmovementIncrement=0.9
+defaultmovementIncrement=0.8
+defaultmenuModifierKey=LCtrl
 defaultwalkModifierKey=LAlt
 defaultwalkToggleMode=0
 defaultincreaseWalkKey=NumpadAdd
@@ -1606,7 +1648,7 @@ defaultwalkSpeed=0.50
 defaultinvertedLX=0
 defaultinvertedLY=0
 defaultMovementStick=0
-defaultjoystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
+defaultjoystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,g,Tab,,q,Home,End,Left,Right
 defaultjoystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 	IniWrite, % defaultusevXBox, settings.ini, General, usevXBox
 	IniWrite, % defaultgameExe, settings.ini, General, gameExe
@@ -1633,6 +1675,7 @@ defaultjoystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 	IniWrite, % defaultrightKey, settings.ini, Keyboard-Movement, rightKey
 	IniWrite, % defaultmovementSmoothing, settings.ini, Keyboard-Movement, movementSmoothing
 	IniWrite, % defaultmovementIncrement, settings.ini, Keyboard-Movement, movementIncrement
+	IniWrite, % defaultmenuModifierKey, settings.ini, Keyboard-Movement, menuModifierKey
 	IniWrite, % defaultwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
 	IniWrite, % defaultwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % defaultincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
@@ -1682,6 +1725,7 @@ SubmitAll:
 		opmovementIncrement:=0.1
 	IniWrite, % opmovementSmoothing, settings.ini, Keyboard-Movement, movementSmoothing
 	IniWrite, % opmovementIncrement, settings.ini, Keyboard-Movement, movementIncrement
+	IniWrite, % opmenuModifierKey, settings.ini, Keyboard-Movement, menuModifierKey
 	IniWrite, % opwalkModifierKey, settings.ini, Keyboard-Movement, walkModifierKey
 	IniWrite, % opwalkToggleMode, settings.ini, Keyboard-Movement, walkToggleMode	
 	IniWrite, % opincreaseWalkKey, settings.ini, Keyboard-Movement, increaseWalkKey
@@ -1845,7 +1889,8 @@ leftKey=a
 downKey=s
 rightKey=d
 movementSmoothing=1
-movementIncrement=0.9
+movementIncrement=0.8
+menuModifierKey=LCtrl
 walkModifierKey=LAlt
 walkToggleMode=0
 increaseWalkKey=NumpadAdd
@@ -1854,7 +1899,7 @@ walkSpeed=0.50
 invertedLX=0
 invertedLY=0
 MovementStick=0
-joystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,,Tab,,q,Home,End,Left,Right
+joystickButtonKeyList=e,Escape,r,f,XButton1,LButton,RButton,MButton,g,Tab,,q,Home,End,Left,Right
 joystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 )
 	Loop,Parse,pairsDefault,`n
@@ -2161,6 +2206,11 @@ getControlSimple:
 
 	; clearFocus:
 	GuiControl, Focus, LoseFocus
+Return
+
+setMenuModKey:
+	MouseGetPos,,,,useControl,1
+	opmenuModifierKey:=GetKeySimple()
 Return
 
 setWalkModKey:
