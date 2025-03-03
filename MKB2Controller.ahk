@@ -1,5 +1,5 @@
 ;	Created by N3R4i
-;	Modified: 2025-01-17
+;	Modified: 2025-02-01
 ;
 ;	Description:
 ;		This is a highly customizable AutoHotkey script with a user friendly GUI that allows the user to control a virtual controller with mouse and keyboard.
@@ -13,7 +13,7 @@
 ;			Nefarius Software Solutions e.U. - ViGEmBus https://github.com/nefarius/ViGEmBus
 ;			evilC - AHK-ViGEm-Bus.ahk/ViGEmWrapper.dll https://github.com/evilC/AHK-ViGEm-Bus
 ;
-version := "1.3.0"
+version := "1.3.1"
 #NoEnv						; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input				; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%	; Ensures a consistent starting directory.
@@ -53,6 +53,7 @@ exitGameKey=#F4
 skipexitGameWarning=0
 hideCursor=1
 checkforUpdates=0
+startMinimized=0
 [Mouse]
 r=80
 interval=1
@@ -189,6 +190,8 @@ IfMsgBox Ok
 	GoSub openSettings
 If (checkforUpdates)
 	GoSub checkforUpdatesOnStartup
+If (!startMinimized) and (!firstRun)
+	GoSub openSettings
 Return
 ; End autoexec.
 
@@ -1320,7 +1323,7 @@ Bloodborne
 )"
 GUI, Main:New, -MinimizeBox, % "MKB2Controller Settings  -  " . version
 GUI, Add, Text,, Options:
-GUI, Add, TreeView, xm w140 h325 r16 gTreeClick Section
+GUI, Add, TreeView, xm w140 h388 r16 gTreeClick Section
 GUI, Add, Button,xs w68 gMainOk, Ok
 GUI, Add, Button,x+4 w68 gMainSave Default, Apply
 GUI, Add, Tab2, +Buttons -Theme -Wrap vTabControl ys w320 h0 Section, General|Mouse|Keyboard-Movement|Keybinds|Bloodborne
@@ -1336,26 +1339,29 @@ GUI, Tab, General
 	;GUI, Add, Text, x+m yp+3, (e.g. game.exe)
 	
 	GUI, Add, GroupBox, x%SX% yp+37 w320 h45,Auto Alt+Tab
-	GUI, Add, CheckBox, % "xp+10 yp+20 vopautoActivateGame Checked" . autoActivateGame, Alt+Tab to game when toggling controller?
+	GUI, Add, CheckBox, % "xp+10 yp+20 vopautoActivateGame Checked" . autoActivateGame, Alt+Tab to game when toggling controller
 	
 	GUI, Add, GroupBox, x%SX% yp+37 w155 h50 Section, Toggle Controller On/Off
 	GUI, Add, Hotkey, xs+10 yp+20 w50 Limit190 vopcontrollerSwitchKey, % StrReplace(controllerSwitchKey, "#")
-	GUI, Add, CheckBox, % "x+5 yp+3 vopcontrollerSwitchKeyWin Checked" InStr(controllerSwitchKey, "#"), Use Win key?
+	GUI, Add, CheckBox, % "x+5 yp+3 vopcontrollerSwitchKeyWin Checked" InStr(controllerSwitchKey, "#"), Use Win key
 	
 	GUI, Add, GroupBox, x+11 yp-23 w155 h50,Hide Cursor
-	GUI, Add, CheckBox, % "xp+10 yp+23 vophideCursor Checked" . hideCursor, Hide cursor?
+	GUI, Add, CheckBox, % "xp+10 yp+23 vophideCursor Checked" . hideCursor, Hide cursor
 	
 	GUI, Add, GroupBox, x%SX% yp+37 w155 h50 Section, Quit MKB2Controller
 	GUI, Add, Hotkey, xs+10 yp+20 w50 Limit190 vopexitKey, % StrReplace(exitKey, "#")
-	GUI, Add, CheckBox, % "x+5 yp+3 vopexitKeyWin Checked" InStr(exitKey, "#"), Use Win key?
+	GUI, Add, CheckBox, % "x+5 yp+3 vopexitKeyWin Checked" InStr(exitKey, "#"), Use Win key
 	
 	GUI, Add, GroupBox, x+11 yp-23 w155 h50, Quit Game: %gameExe%
 	GUI, Add, Hotkey, xp+10 yp+20 w50 Limit190 vopexitGameKey, % StrReplace(exitGameKey, "#")
-	GUI, Add, CheckBox, % "x+5 yp+3 vopexitGameKeyWin Checked" InStr(exitGameKey, "#"), Use Win key?
+	GUI, Add, CheckBox, % "x+5 yp+3 vopexitGameKeyWin Checked" InStr(exitGameKey, "#"), Use Win key
 	
 	GUI, Add, GroupBox, x%SX% yp+37 w320 h48,Updates
 	GUI, Add, Button, xp+10 yp+18 w110 Center -TabStop gcheckforUpdatesNow, Check for updates
 	GUI, Add, CheckBox, % "x+5 yp+5 vopcheckforUpdates Checked" . checkforUpdates, Check for Updates on startup
+	
+	GUI, Add, GroupBox, x%SX% yp+37 w320 h48,Startup
+	GUI, Add, CheckBox, % "xp+10 yp+22 vopstartMinimized Checked" . startMinimized, Start minimized
 ;------------------------------------------------------------------------------------------------------------------------------------------
 GUI, Tab, Mouse
 	GUI, Add, GroupBox, x%SX% y%SY% w320 h50 Section, Resistance
@@ -1578,6 +1584,7 @@ defaultexitGameKey=#F4
 defaultskipexitGameWarning=0
 defaulthideCursor=1
 defaultcheckforUpdates=0
+defaultstartMinimized=0
 defaultr=80
 defaultinterval=1
 defaultminmove=0.37
@@ -1610,6 +1617,7 @@ defaultjoystickButtonKeyListBB=XButton2,,,LShift,Space,,,,
 	IniWrite, % defaultskipexitGameWarning, settings.ini, General, skipexitGameWarning
 	IniWrite, % defaulthideCursor, settings.ini, General, hideCursor
 	IniWrite, % defaultcheckforUpdates, settings.ini, General, checkforUpdates
+	IniWrite, % defaultstartMinimized, settings.ini, General, startMinimized
 	;Write Mouse
 	IniWrite, % defaultr, settings.ini, Mouse, r
 	IniWrite, % defaultinterval, settings.ini, Mouse, interval
@@ -1654,6 +1662,7 @@ SubmitAll:
 	IniWrite, % opexitGameKeyWin ? "#" . opexitGameKey : opexitGameKey, settings.ini, General, exitGameKey
 	IniWrite, % ophideCursor, settings.ini, General, hideCursor
 	IniWrite, % opcheckforUpdates, settings.ini, General, checkforUpdates
+	IniWrite, % opstartMinimized, settings.ini, General, startMinimized
 	;Write Mouse
 	IniWrite, % opr, settings.ini, Mouse, r
 	IniWrite, % opinterval, settings.ini, Mouse, interval
@@ -1823,6 +1832,7 @@ exitGameKey=#F4
 skipexitGameWarning=0
 hideCursor=1
 checkforUpdates=0
+startMinimized=0
 r=80
 interval=1
 minmove=0.37
@@ -2310,56 +2320,66 @@ GetMouseModifiers() {	;function to add modifiers to the mouse buttons
 }
 
 WM_LBUTTONDOWN() {
-	Global useControl, MousePressed
-	Send, {Esc}
+	Global useControl, MousePressed, ih, ihSimple
+	; Send, {Esc}
 	Modifier:=GetMouseModifiers()
 	MousePressed := Modifier . "LButton"
+	ih.Stop()
+	ihSimple.Stop()
 	Return 0
 }
 
 WM_RBUTTONDOWN() {
-	Global useControl, MousePressed
-	Send, {Esc}
+	Global useControl, MousePressed, ih, ihSimple
+	; Send, {Esc}
 	Modifier:=GetMouseModifiers()
 	MousePressed := Modifier . "RButton"
+	ih.Stop()
+	ihSimple.Stop()
 	Return 0
 }
 
 WM_MBUTTONDOWN() {
-	Global useControl, MousePressed
-	Send, {Esc}
+	Global useControl, MousePressed, ih, ihSimple
+	; Send, {Esc}
 	Modifier:=GetMouseModifiers()
 	MousePressed := Modifier . "MButton"
+	ih.Stop()
+	ihSimple.Stop()
 	Return 0
 }
 
 WM_XBUTTONDOWN(w) {
-	Global useControl, MousePressed
-	Send, {Esc}
+	Global useControl, MousePressed, ih, ihSimple
+	; Send, {Esc}
 	Modifier:=GetMouseModifiers()
 	SetFormat, IntegerFast, Hex
 	IF ((w & 0xF0) = 0x20)	;changed 0xFF -> 0xF0 because modifier+XButton resulted in a different value
 		MousePressed := Modifier . "XButton1"
 	Else IF((w & 0xF0) = 0x40)	;changed 0xFF -> 0xF0 because modifier+XButton resulted in a different value
 		MousePressed := Modifier . "XButton2"
+	ih.Stop()
+	ihSimple.Stop()
 	Return 0
 }
 
 WM_MOUSEHWHEEL(w) {
-	Global useControl, MousePressed
-	Send, {Esc}
+	Global useControl, MousePressed, ih, ihSimple
+	; Send, {Esc}
 	Modifier:=GetMouseModifiers()
 	SetFormat, IntegerFast, Hex
 	IF ((w & 0xFF0000) = 0x780000)
 		MousePressed := Modifier . "WheelRight"
 	Else IF((w & 0xFF0000) = 0x880000)
 		MousePressed := Modifier . "WheelLeft"
+	ih.Stop()
+	ihSimple.Stop()
 	Return 0
 }
 
 WM_MOUSEWHEEL(w) {
-	Global useControl, MousePressed
-	Send, {Esc}
+	Global useControl, MousePressed, ih, ihSimple
+	; Send, {Esc}
 	Modifier:=GetMouseModifiers()
 	SetFormat, IntegerFast, Hex
 	MousePressed := "" . w + 0x0
@@ -2367,6 +2387,8 @@ WM_MOUSEWHEEL(w) {
 		MousePressed := Modifier . "WheelUp"
 	Else IF((w & 0xFF0000) = 0x880000)
 		MousePressed := Modifier . "WheelDown"
+	ih.Stop()
+	ihSimple.Stop()
 	Return 0
 }
 
